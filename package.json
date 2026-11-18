@@ -1,0 +1,14 @@
+{
+  "name": "akipoly",
+  "type": "module",
+  "version": "0.1.0",
+  "description": "Akipoly — the property-trading board game reimagined as an arcade GameFi. Single-page waitlist site.",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview"
+  },
+  "dependencies": {
+    "astro": "^7.4.12"
+  }
+}

@@ -1,0 +1,32 @@
+---
+import HeroArt from './HeroArt.astro';
+---
+
+<section class="hero" id="top" aria-labelledby="hero-title">
+  <div class="container hero__grid">
+    <div>
+      <h1 class="hero__title" id="hero-title">
+        ROLL THE DICE.<br />
+        <span class="hero__hl">OWN THE BOARD.</span>
+      </h1>
+      <p class="hero__sub">
+        Your favourite property-trading experience, reimagined for a new
+        generation.
+      </p>
+      <div class="hero__ctas">
+        <a class="btn btn--lg" href="#waitlist">Join the Waitlist</a>
+        <a class="btn btn--secondary btn--lg" href="#showcase">Explore Akipoly</a>
+      </div>
+      <p class="hero__note">
+        <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+          <circle cx="9" cy="9" r="8" fill="#B8F28B" stroke="#171717" stroke-width="2" />
+          <path d="M5.6 9.2 8.1 11.7 12.6 6.8" fill="none" stroke="#171717" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        Free to join. No wallet needed.
+      </p>
+    </div>
+    <div class="hero__art">
+      <HeroArt />
+    </div>
+  </div>
+</section>

@@ -1,0 +1,58 @@
+---
+import '../styles/global.css';
+import Intro from '../components/Intro.astro';
+import Nav from '../components/Nav.astro';
+import Hero from '../components/Hero.astro';
+import TickerTape from '../components/TickerTape.astro';
+import About from '../components/About.astro';
+import Showcase from '../components/Showcase.astro';
+import Waitlist from '../components/Waitlist.astro';
+import Footer from '../components/Footer.astro';
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Akipoly is the property-trading board game, reimagined as a bold, playful GameFi experience on Arc. Roll the dice, own the board. Join the waitlist."
+    />
+    <link rel="icon" href="/icons/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48.png" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <meta name="theme-color" content="#FFF500" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Chango&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <title>Akipoly — Roll the Dice. Own the Board.</title>
+  </head>
+  <body>
+    <noscript>
+      <style>
+        .intro {
+          display: none;
+        }
+      </style>
+    </noscript>
+    <Intro />
+    <div id="page-shell">
+      <a class="skip-link" href="#main">Skip to content</a>
+      <Nav />
+      <main id="main">
+        <Hero />
+        <TickerTape />
+        <About />
+        <Showcase />
+        <Waitlist />
+      </main>
+      <Footer />
+    </div>
+  </body>
+</html>

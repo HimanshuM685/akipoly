@@ -1,0 +1,96 @@
+<!--
+  Opening splash — shown on every fresh load; skipped for deep links
+  (#waitlist etc.) and without JS (noscript rule in index.astro).
+  Dismisses on Escape, scroll, backdrop press or the close button.
+-->
+<div class="intro" id="intro" role="dialog" aria-modal="true" aria-label="Akipoly — we create monopoly on Arc">
+  <button class="intro__close" id="intro-close" type="button" aria-label="Close intro and go to the site">
+    <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
+      <path d="M5 5l12 12M17 5L5 17" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" />
+    </svg>
+  </button>
+
+  <!-- decorative sparkles -->
+  <svg class="intro__spark intro__spark--tl" width="54" height="54" viewBox="0 0 72 72" aria-hidden="true">
+    <polygon points="36,2 41.5,26.5 66,32 41.5,37.5 36,62 30.5,37.5 6,32 30.5,26.5" fill="#FF80B5" stroke="#171717" stroke-width="4" stroke-linejoin="round" />
+  </svg>
+  <svg class="intro__spark intro__spark--mr" width="44" height="44" viewBox="0 0 72 72" aria-hidden="true">
+    <polygon points="36,2 41.5,26.5 66,32 41.5,37.5 36,62 30.5,37.5 6,32 30.5,26.5" fill="#9DB7FB" stroke="#171717" stroke-width="4" stroke-linejoin="round" />
+  </svg>
+  <svg class="intro__spark intro__spark--bl" width="40" height="40" viewBox="0 0 72 72" aria-hidden="true">
+    <polygon points="36,2 41.5,26.5 66,32 41.5,37.5 36,62 30.5,37.5 6,32 30.5,26.5" fill="#B8F28B" stroke="#171717" stroke-width="4" stroke-linejoin="round" />
+  </svg>
+
+  <div class="intro__inner">
+    <img
+      class="intro__mark"
+      src="/icons/akipoly-wordmark@1000.png"
+      width="1000"
+      height="798"
+      alt="Akipoly"
+    />
+    <p class="intro__tag">we create <span class="intro__hl">monopoly</span> on arc</p>
+    <a class="btn btn--lg intro__cta" id="intro-cta" href="#waitlist">Join the Waitlist</a>
+    <p class="intro__hint">press esc — or keep scrolling</p>
+  </div>
+</div>
+
+<script>
+  const intro = document.getElementById('intro');
+  const shell = document.getElementById('page-shell');
+
+  if (intro && shell) {
+    // Deep links land on the page directly, not the splash.
+    if (window.location.hash && window.location.hash.length > 1) {
+      intro.remove();
+    } else {
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      // Trap keyboard behind the splash and freeze scroll.
+      shell.setAttribute('inert', '');
+      document.documentElement.classList.add('intro-open');
+
+      const cta = document.getElementById('intro-cta') as HTMLAnchorElement;
+      cta.focus({ preventScroll: true });
+
+      let closing = false;
+      const close = (target: 'page' | 'waitlist') => {
+        if (closing) return;
+        closing = true;
+
+        intro.classList.add('intro--closing');
+        document.documentElement.classList.remove('intro-open');
+        shell.removeAttribute('inert');
+        window.setTimeout(() => intro.remove(), reducedMotion ? 0 : 380);
+
+        if (target === 'waitlist') {
+          document.getElementById('waitlist')?.scrollIntoView({
+            behavior: reducedMotion ? 'auto' : 'smooth',
+          });
+        } else {
+          const heroTitle = document.getElementById('hero-title');
+          heroTitle?.setAttribute('tabindex', '-1');
+          heroTitle?.focus({ preventScroll: true });
+        }
+      };
+
+      document.getElementById('intro-close')?.addEventListener('click', () => close('page'));
+      cta.addEventListener('click', () => close('waitlist'));
+      intro.addEventListener('click', (event) => {
+        if (event.target === intro) close('page');
+      });
+      window.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') close('page');
+        else if (['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', 'Home', 'End', ' '].includes(event.key)) {
+          // Only when the splash is the active context — the CTA keeps Enter/Space native.
+          if (event.target !== cta) {
+            event.preventDefault();
+            close('page');
+          }
+        }
+      });
+      window.addEventListener('wheel', () => close('page'), { once: true, passive: true });
+      window.addEventListener('touchmove', () => close('page'), { once: true, passive: true });
+    }
+  }
+</script>
