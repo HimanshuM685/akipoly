@@ -1,0 +1,66 @@
+<!--
+  Waterwave page transition between / and /docs — a rising, rolling tide in
+  brand colours. MPA-friendly: the outgoing page animates the tide up,
+  navigates, and the incoming page (flagged via sessionStorage) starts
+  covered and drains the tide down. Without JS or with reduced motion,
+  navigation is a plain full-page load.
+-->
+<div class="waterwave" id="waterwave" aria-hidden="true">
+  <svg class="waterwave__sea" viewBox="0 0 2880 420" preserveAspectRatio="none" focusable="false">
+    <path class="waterwave__layer waterwave__layer--1" fill="#FFF500"
+      d="M0 190 C240 70 480 310 720 190 S1200 310 1440 190 S1920 70 2160 190 S2640 310 2880 190 L2880 420 L0 420 Z" />
+    <path class="waterwave__layer waterwave__layer--2" fill="#9DB7FB"
+      d="M0 235 C320 135 560 325 840 240 S1280 160 1520 240 S2000 330 2240 230 S2680 155 2880 235 L2880 420 L0 420 Z" />
+    <path class="waterwave__layer waterwave__layer--3" fill="#171717"
+      d="M0 270 C380 195 660 340 900 275 S1340 210 1580 275 S2020 345 2260 265 S2720 215 2880 270 L2880 420 L0 420 Z" />
+  </svg>
+</div>
+
+<script>
+  const overlay = document.getElementById('waterwave');
+  if (overlay) {
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const NAV_FLAG = 'akipoly:wave-nav';
+    const isNavLink = (href: string) => href === '/' || href === '/docs';
+
+    // Incoming navigation: start covered (set pre-paint by the inline head
+    // script), then drain the tide away.
+    if (document.documentElement.classList.contains('wave-pending')) {
+      document.documentElement.classList.remove('wave-pending');
+      overlay.classList.add('waterwave--leaving');
+      const done = () => {
+        overlay.classList.remove('waterwave--leaving');
+        try {
+          sessionStorage.removeItem(NAV_FLAG);
+        } catch {
+          /* private mode */
+        }
+      };
+      overlay.addEventListener('animationend', done, { once: true });
+      // Safety net if animationend never fires.
+      window.setTimeout(done, 900);
+    }
+
+    // Outgoing navigation: rise the tide, then navigate.
+    document.addEventListener('click', (event) => {
+      if (reduced) return;
+      const anchor = (event.target as HTMLElement).closest?.('a[href]') as HTMLAnchorElement | null;
+      if (!anchor) return;
+      const href = anchor.getAttribute('href') ?? '';
+      if (!isNavLink(href)) return;
+      // Respect new-tab / new-window gestures.
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
+
+      event.preventDefault();
+      try {
+        sessionStorage.setItem(NAV_FLAG, '1');
+      } catch {
+        /* proceed without the reveal */
+      }
+      overlay.classList.add('waterwave--entering');
+      window.setTimeout(() => {
+        window.location.href = href;
+      }, 520);
+    });
+  }
+</script>

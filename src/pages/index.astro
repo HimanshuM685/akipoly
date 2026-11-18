@@ -2,6 +2,7 @@
 import '../styles/global.css';
 import WaitlistForm from '../components/WaitlistForm.astro';
 import CookieBanner from '../components/CookieBanner.astro';
+import Waterwave from '../components/Waterwave.astro';
 
 const year = new Date().getFullYear();
 ---
@@ -28,22 +29,31 @@ const year = new Date().getFullYear();
       rel="stylesheet"
     />
     <title>Akipoly — Roll the Dice. Own the Board.</title>
+    <script is:inline>
+      try {
+        if (sessionStorage.getItem('akipoly:wave-nav') === '1') {
+          document.documentElement.classList.add('wave-pending');
+        }
+      } catch {
+        /* private mode */
+      }
+    </script>
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
     <a class="page__help" href="/docs" aria-label="What is Akipoly? Read the explainer">?</a>
     <main id="main" class="page">
       <!-- decorative sparkles -->
-      <svg class="page__spark page__spark--tl" width="54" height="54" viewBox="0 0 72 72" aria-hidden="true">
+      <svg class="page__spark page__spark--tl twinkle twinkle--1" width="54" height="54" viewBox="0 0 72 72" aria-hidden="true">
         <polygon points="36,2 41.5,26.5 66,32 41.5,37.5 36,62 30.5,37.5 6,32 30.5,26.5" fill="#FF80B5" stroke="#171717" stroke-width="4" stroke-linejoin="round" />
       </svg>
-      <svg class="page__spark page__spark--tr" width="44" height="44" viewBox="0 0 72 72" aria-hidden="true">
+      <svg class="page__spark page__spark--tr twinkle twinkle--2" width="44" height="44" viewBox="0 0 72 72" aria-hidden="true">
         <polygon points="36,2 41.5,26.5 66,32 41.5,37.5 36,62 30.5,37.5 6,32 30.5,26.5" fill="#9DB7FB" stroke="#171717" stroke-width="4" stroke-linejoin="round" />
       </svg>
-      <svg class="page__spark page__spark--bl" width="40" height="40" viewBox="0 0 72 72" aria-hidden="true">
+      <svg class="page__spark page__spark--bl twinkle twinkle--3" width="40" height="40" viewBox="0 0 72 72" aria-hidden="true">
         <polygon points="36,2 41.5,26.5 66,32 41.5,37.5 36,62 30.5,37.5 6,32 30.5,26.5" fill="#B8F28B" stroke="#171717" stroke-width="4" stroke-linejoin="round" />
       </svg>
-      <svg class="page__spark page__spark--br" width="36" height="36" viewBox="0 0 72 72" aria-hidden="true">
+      <svg class="page__spark page__spark--br twinkle twinkle--4" width="36" height="36" viewBox="0 0 72 72" aria-hidden="true">
         <polygon points="36,2 41.5,26.5 66,32 41.5,37.5 36,62 30.5,37.5 6,32 30.5,26.5" fill="#A78BFA" stroke="#171717" stroke-width="4" stroke-linejoin="round" />
       </svg>
 
@@ -66,6 +76,7 @@ const year = new Date().getFullYear();
         © {year} Akipoly. All rights reserved.<br />
       </p>
     </main>
+    <Waterwave />
     <CookieBanner />
   </body>
 </html>

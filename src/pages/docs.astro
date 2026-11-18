@@ -1,5 +1,6 @@
 ---
 import '../styles/global.css';
+import Waterwave from '../components/Waterwave.astro';
 
 const year = new Date().getFullYear();
 ---
@@ -27,6 +28,15 @@ const year = new Date().getFullYear();
     />
     <link rel="canonical" href="/docs" />
     <title>akipoly — what is this thing?</title>
+    <script is:inline>
+      try {
+        if (sessionStorage.getItem('akipoly:wave-nav') === '1') {
+          document.documentElement.classList.add('wave-pending');
+        }
+      } catch {
+        /* private mode */
+      }
+    </script>
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
@@ -119,5 +129,6 @@ const year = new Date().getFullYear();
 
       <p class="docs__legal">© {year} akipoly. all rights reserved.</p>
     </main>
+    <Waterwave />
   </body>
 </html>

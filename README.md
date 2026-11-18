@@ -36,12 +36,14 @@ src/pages/index.astro          the page — one screen, one action
 src/pages/docs.astro           /docs — the "what is this thing" explainer
 src/components/WaitlistForm.astro  email form + success state + client script
 src/components/CookieBanner.astro  one-line cookie note (localStorage ack)
+src/components/Waterwave.astro     the rising-tide page transition between / and /docs
 src/styles/global.css          design tokens (from design.md) + all styles
 src/lib/waitlist.ts            waitlist integration seam
 public/icons/                  generated icon set (see below)
 scripts/cdp-shot.mjs           dev-only: screenshot + overflow check via raw CDP
 scripts/cdp-test.mjs           dev-only: drives the waitlist form (valid/invalid)
 scripts/build-icons.mjs        dev-only: regenerate icons from the master logo
+scripts/cdp-test-wave.mjs      dev-only: waterwave / <-> /docs transition state machine
 ```
 
 All illustration is original (inline SVG sparkles; the logo artwork itself is
