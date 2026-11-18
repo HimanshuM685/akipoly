@@ -129,8 +129,9 @@ Present in the repo:
   focus moved here) with share button ("Spread the word" → clipboard, reverts after 2s).
   Logic in the component script; seam `src/lib/waitlist.ts`; env `PUBLIC_WAITLIST_ENDPOINT`.
   Unset ⇒ demo mode: validates, animates to success, stores in `localStorage` only.
-- **Waterwave** — the tide between `/` and `/docs`. Fixed full-viewport overlay, three sine
-  layers (yellow → periwinkle → ink). Clicking an internal link to `/` or `/docs` plays
+- **Waterwave** — the full-screen takeover tide between `/` and `/docs`. Fixed full-viewport
+  overlay, Electric Yellow sky flood + two sine wave bands (periwinkle over ink) that completely
+  cover the screen at the peak of a navigation. Clicking an internal link to `/` or `/docs` plays
   `wave-cover` (520ms, tide rises), sets `akipoly:wave-nav` in sessionStorage, and navigates;
   the incoming page's pre-paint inline head script adds `wave-pending` so it starts covered,
   then `wave-uncover` drains the tide (620ms). Modifier-key clicks are respected; without JS or
