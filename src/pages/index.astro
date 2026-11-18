@@ -1,13 +1,8 @@
 ---
 import '../styles/global.css';
-import Intro from '../components/Intro.astro';
-import Nav from '../components/Nav.astro';
-import Hero from '../components/Hero.astro';
-import TickerTape from '../components/TickerTape.astro';
-import About from '../components/About.astro';
-import Showcase from '../components/Showcase.astro';
-import Waitlist from '../components/Waitlist.astro';
-import Footer from '../components/Footer.astro';
+import WaitlistForm from '../components/WaitlistForm.astro';
+
+const year = new Date().getFullYear();
 ---
 
 <!doctype html>
@@ -19,12 +14,12 @@ import Footer from '../components/Footer.astro';
       name="description"
       content="Akipoly is the property-trading board game, reimagined as a bold, playful GameFi experience on Arc. Roll the dice, own the board. Join the waitlist."
     />
+    <meta name="theme-color" content="#FFF500" />
     <link rel="icon" href="/icons/favicon.svg" type="image/svg+xml" />
     <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
     <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48.png" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
-    <meta name="theme-color" content="#FFF500" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -34,25 +29,41 @@ import Footer from '../components/Footer.astro';
     <title>Akipoly — Roll the Dice. Own the Board.</title>
   </head>
   <body>
-    <noscript>
-      <style>
-        .intro {
-          display: none;
-        }
-      </style>
-    </noscript>
-    <Intro />
-    <div id="page-shell">
-      <a class="skip-link" href="#main">Skip to content</a>
-      <Nav />
-      <main id="main">
-        <Hero />
-        <TickerTape />
-        <About />
-        <Showcase />
-        <Waitlist />
-      </main>
-      <Footer />
-    </div>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <main id="main" class="page">
+      <!-- decorative sparkles -->
+      <svg class="page__spark page__spark--tl" width="54" height="54" viewBox="0 0 72 72" aria-hidden="true">
+        <polygon points="36,2 41.5,26.5 66,32 41.5,37.5 36,62 30.5,37.5 6,32 30.5,26.5" fill="#FF80B5" stroke="#171717" stroke-width="4" stroke-linejoin="round" />
+      </svg>
+      <svg class="page__spark page__spark--tr" width="44" height="44" viewBox="0 0 72 72" aria-hidden="true">
+        <polygon points="36,2 41.5,26.5 66,32 41.5,37.5 36,62 30.5,37.5 6,32 30.5,26.5" fill="#9DB7FB" stroke="#171717" stroke-width="4" stroke-linejoin="round" />
+      </svg>
+      <svg class="page__spark page__spark--bl" width="40" height="40" viewBox="0 0 72 72" aria-hidden="true">
+        <polygon points="36,2 41.5,26.5 66,32 41.5,37.5 36,62 30.5,37.5 6,32 30.5,26.5" fill="#B8F28B" stroke="#171717" stroke-width="4" stroke-linejoin="round" />
+      </svg>
+      <svg class="page__spark page__spark--br" width="36" height="36" viewBox="0 0 72 72" aria-hidden="true">
+        <polygon points="36,2 41.5,26.5 66,32 41.5,37.5 36,62 30.5,37.5 6,32 30.5,26.5" fill="#A78BFA" stroke="#171717" stroke-width="4" stroke-linejoin="round" />
+      </svg>
+
+      <h1>
+        <img
+          class="page__logo"
+          src="/icons/akipoly-wordmark@1000.png"
+          width="1000"
+          height="798"
+          alt="Akipoly"
+        />
+      </h1>
+      <p class="page__tag">we create <span class="page__hl">monopoly</span> on arc</p>
+
+      <div class="page__form" id="waitlist">
+        <WaitlistForm />
+      </div>
+
+      <p class="page__legal">
+        © {year} Akipoly. All rights reserved.<br />
+        Akipoly is an independent project, not affiliated with any classic board game or its publisher.
+      </p>
+    </main>
   </body>
 </html>

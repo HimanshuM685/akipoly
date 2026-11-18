@@ -1,0 +1,148 @@
+<!--
+  The one action on the page. Front-end only; src/lib/waitlist.ts is the seam
+  for a future backend (PUBLIC_WAITLIST_ENDPOINT). Demo mode keeps the
+  submission in this browser's localStorage — nothing is sent anywhere.
+-->
+<form id="waitlist-form" class="wl-form" novalidate>
+  <label for="waitlist-email">Email address</label>
+  <div class="wl-form__row">
+    <div class="field">
+      <input
+        id="waitlist-email"
+        name="email"
+        type="email"
+        autocomplete="email"
+        inputmode="email"
+        placeholder="you@example.com"
+        aria-describedby="waitlist-email-error"
+      />
+      <p class="field__error" id="waitlist-email-error" role="alert" hidden>
+        <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+          <circle cx="8" cy="8" r="7" fill="#FFB9AA" />
+          <path d="M8 4.5v4M8 11h.01" stroke="#171717" stroke-width="1.8" stroke-linecap="round" />
+        </svg>
+        <span id="waitlist-email-error-text"></span>
+      </p>
+    </div>
+    <button type="submit" class="btn btn--lg wl-form__submit" id="waitlist-submit">
+      Join the Waitlist
+    </button>
+  </div>
+</form>
+
+<!-- success state -->
+<div class="wl-success" id="waitlist-success" role="status" tabindex="-1" hidden>
+  <svg width="64" height="64" viewBox="0 0 72 72" aria-hidden="true">
+    <circle cx="36" cy="36" r="32" fill="#171717" />
+    <path d="M22 37.5 32 47 51 26" fill="none" stroke="#B8F28B" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
+  </svg>
+  <p class="wl-success__title">You're in.</p>
+  <p class="wl-success__copy">
+    Nice one. We'll drop you a line as soon as Akipoly opens its doors (and its
+    dice). Until then — bring your best trader face.
+  </p>
+  <button type="button" class="wl-success__share" id="waitlist-share">
+    Spread the word
+  </button>
+</div>
+
+<div class="form-alert" id="waitlist-alert" role="alert" hidden>
+  <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" style="flex-shrink:0">
+    <path d="M10 2 19 18H1L10 2Z" fill="#FFB9AA" stroke="#FFB9AA" stroke-width="1.5" stroke-linejoin="round" />
+    <path d="M10 8v4.2M10 15h.01" stroke="#171717" stroke-width="1.8" stroke-linecap="round" />
+  </svg>
+  <span id="waitlist-alert-text"></span>
+</div>
+
+<p class="wl-fineprint" id="waitlist-fineprint">
+  One email when we launch. No spam, no 47-part nurture sequence. Unsubscribe anytime.
+</p>
+
+<script>
+  import { joinWaitlist } from '../lib/waitlist';
+
+  const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+  const form = document.getElementById('waitlist-form') as HTMLFormElement;
+  const input = document.getElementById('waitlist-email') as HTMLInputElement;
+  const submit = document.getElementById('waitlist-submit') as HTMLButtonElement;
+  const success = document.getElementById('waitlist-success') as HTMLDivElement;
+  const errorBox = document.getElementById('waitlist-email-error') as HTMLParagraphElement;
+  const errorText = document.getElementById('waitlist-email-error-text') as HTMLSpanElement;
+  const alertBox = document.getElementById('waitlist-alert') as HTMLDivElement;
+  const alertText = document.getElementById('waitlist-alert-text') as HTMLSpanElement;
+  const fineprint = document.getElementById('waitlist-fineprint') as HTMLParagraphElement;
+  const share = document.getElementById('waitlist-share') as HTMLButtonElement | null;
+
+  const submitLabel = submit.innerHTML;
+
+  function validateEmail(value: string): string | null {
+    const trimmed = value.trim();
+    if (!trimmed) return 'Enter your email address.';
+    if (!EMAIL_PATTERN.test(trimmed)) {
+      return "That email doesn't look right — check for typos.";
+    }
+    return null;
+  }
+
+  function showFieldError(message: string | null) {
+    if (message) {
+      errorText.textContent = message;
+      errorBox.hidden = false;
+      input.setAttribute('aria-invalid', 'true');
+    } else {
+      errorBox.hidden = true;
+      input.removeAttribute('aria-invalid');
+    }
+  }
+
+  input.addEventListener('input', () => {
+    if (!errorBox.hidden) showFieldError(validateEmail(input.value));
+  });
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const fieldError = validateEmail(input.value);
+    showFieldError(fieldError);
+    alertBox.hidden = true;
+    if (fieldError) {
+      input.focus();
+      return;
+    }
+
+    submit.disabled = true;
+    input.disabled = true;
+    submit.innerHTML = '<span class="btn__spinner" aria-hidden="true"></span> Rolling…';
+
+    try {
+      await joinWaitlist(input.value.trim());
+      form.hidden = true;
+      alertBox.hidden = true;
+      fineprint.hidden = true;
+      success.hidden = false;
+      success.focus();
+    } catch (err) {
+      console.error('[akipoly] Waitlist submission failed:', err);
+      alertText.textContent =
+        "That didn't go through. Check your connection and try one more time.";
+      alertBox.hidden = false;
+      submit.disabled = false;
+      input.disabled = false;
+      submit.innerHTML = submitLabel;
+      input.focus();
+    }
+  });
+
+  share?.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      share.textContent = 'Link copied — nice work';
+      window.setTimeout(() => {
+        share.textContent = 'Spread the word';
+      }, 2000);
+    } catch {
+      // Clipboard unavailable (permissions, older browser) — no-op; the URL
+      // is already in the address bar.
+    }
+  });
+</script>

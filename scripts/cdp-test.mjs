@@ -5,7 +5,7 @@
  */
 import { spawn } from 'node:child_process';
 
-const url = process.argv[2] + '#waitlist'; // deep link skips the intro splash
+const url = process.argv[2]; // single screen; form is on the page itself
 const PORT = 9334;
 const CHROME = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 
