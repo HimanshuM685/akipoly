@@ -126,7 +126,8 @@ Present in the repo:
   yellow hard shadow); inline error `.field__error` (`role="alert"`, icon + #a33a2a text,
   `#ffe9e2` fill); submit `.btn.btn--lg` (spinner + "Rolling…" while running); `.form-alert`
   on failure (`role="alert"`); fineprint. Success state `.wl-success` (lime, `role="status"`,
-  focus moved here) with share button ("Spread the word" → clipboard, reverts after 2s).
+  focus moved here) with share link ("Spread the word" → X intent, preloaded caption, origin
+  taken from `window.location.origin`, opens in a new tab).
   Logic in the component script; seam `src/lib/waitlist.ts`; env `PUBLIC_WAITLIST_ENDPOINT`.
   Unset ⇒ demo mode: validates, animates to success, stores in `localStorage` only.
 - **Waterwave** — the full-screen takeover tide between `/` and `/docs`. Fixed full-viewport

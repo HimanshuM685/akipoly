@@ -41,9 +41,9 @@
     Nice one. We'll drop you a line as soon as Akipoly opens its doors (and its
     dice). Until then — bring your best trader face.
   </p>
-  <button type="button" class="wl-success__share" id="waitlist-share">
+  <a class="wl-success__share" id="waitlist-share" target="_blank" rel="noopener noreferrer" aria-label="Share Akipoly on X">
     Spread the word
-  </button>
+  </a>
 </div>
 
 <div class="form-alert" id="waitlist-alert" role="alert" hidden>
@@ -72,9 +72,17 @@
   const alertBox = document.getElementById('waitlist-alert') as HTMLDivElement;
   const alertText = document.getElementById('waitlist-alert-text') as HTMLSpanElement;
   const fineprint = document.getElementById('waitlist-fineprint') as HTMLParagraphElement;
-  const share = document.getElementById('waitlist-share') as HTMLButtonElement | null;
+  const share = document.getElementById('waitlist-share') as HTMLAnchorElement | null;
 
   const submitLabel = submit.innerHTML;
+
+  // Point the share link at an X intent with a preloaded caption.
+  // The URL is whatever origin the page was opened on (ngrok, localhost, prod).
+  if (share) {
+    const shareUrl = window.location.origin;
+    const caption = `akipoly. the property-trading board game, rebuilt for a new generation. on arc, with your friends. join the waitlist → ${shareUrl}`;
+    share.href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(caption)}`;
+  }
 
   function validateEmail(value: string): string | null {
     const trimmed = value.trim();
@@ -133,16 +141,5 @@
     }
   });
 
-  share?.addEventListener('click', async () => {
-    try {
-      await navigator.clipboard.writeText(window.location.href);
-      share.textContent = 'Link copied — nice work';
-      window.setTimeout(() => {
-        share.textContent = 'Spread the word';
-      }, 2000);
-    } catch {
-      // Clipboard unavailable (permissions, older browser) — no-op; the URL
-      // is already in the address bar.
-    }
-  });
+
 </script>

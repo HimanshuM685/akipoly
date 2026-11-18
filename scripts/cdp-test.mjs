@@ -102,12 +102,10 @@ results.valid = await evalJs(`(() => ({
   stored: localStorage.getItem('akipoly:waitlist:last-submission'),
 }))()`);
 
-// 3. Share button copies URL (clipboard may fail headless; label must not crash)
-results.share = await evalJs(`(async () => {
-  const btn = document.getElementById('waitlist-share');
-  btn.click();
-  await new Promise(r => setTimeout(r, 400));
-  return btn.textContent;
+// 3. Share link points at an X intent with a preloaded caption
+results.share = await evalJs(`(() => {
+  const link = document.getElementById('waitlist-share');
+  return { href: link?.getAttribute('href') };
 })()`);
 
 results.exceptions = exceptions;
