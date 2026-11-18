@@ -1,6 +1,7 @@
 ---
 import '../styles/global.css';
 import WaitlistForm from '../components/WaitlistForm.astro';
+import CookieBanner from '../components/CookieBanner.astro';
 
 const year = new Date().getFullYear();
 ---
@@ -30,6 +31,7 @@ const year = new Date().getFullYear();
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
+    <a class="page__help" href="/docs" aria-label="What is Akipoly? Read the explainer">?</a>
     <main id="main" class="page">
       <!-- decorative sparkles -->
       <svg class="page__spark page__spark--tl" width="54" height="54" viewBox="0 0 72 72" aria-hidden="true">
@@ -62,8 +64,8 @@ const year = new Date().getFullYear();
 
       <p class="page__legal">
         © {year} Akipoly. All rights reserved.<br />
-        Akipoly is an independent project, not affiliated with any classic board game or its publisher.
       </p>
     </main>
+    <CookieBanner />
   </body>
 </html>

@@ -1,0 +1,40 @@
+<!--
+  Cookie note — one line, one button. Akipoly sets no tracking cookies and
+  loads no analytics; this acknowledgement is kept in localStorage so the
+  banner does not nag. Dismissal is remembered on this device only.
+-->
+<div class="cookie" id="cookie-banner" role="region" aria-label="Cookie notice">
+  <p class="cookie__copy">
+    We don't do creepy tracking cookies. One localStorage note so we don't nag you. That's it.
+  </p>
+  <button class="btn cookie__btn" id="cookie-dismiss" type="button">Got it</button>
+</div>
+
+<script>
+  const KEY = 'akipoly:cookie-ack';
+  const banner = document.getElementById('cookie-banner');
+  const dismiss = document.getElementById('cookie-dismiss');
+
+  if (banner && dismiss) {
+    let acknowledged = false;
+    try {
+      acknowledged = localStorage.getItem(KEY) === '1';
+    } catch {
+      acknowledged = false;
+    }
+
+    if (acknowledged) {
+      banner.remove();
+    } else {
+      dismiss.addEventListener('click', () => {
+        try {
+          localStorage.setItem(KEY, '1');
+        } catch {
+          // Private mode / quota — still dismiss for this view.
+        }
+        banner.classList.add('cookie--closing');
+        window.setTimeout(() => banner.remove(), 220);
+      });
+    }
+  }
+</script>

@@ -65,7 +65,12 @@ Rules: sentence case for prose; uppercase only for short labels and buttons; two
 
 ## Layout & spacing
 
-- `.page`: `min-height: 100dvh`, flex column, centred, `overflow: clip`, fluid vertical padding.
+- `.page`: `height: 100%` of `html, body { height: 100% }`, flex column, centred, `overflow: auto`
+  (scrolls internally only on very short viewports), fluid vertical padding. **The whole
+  composition renders at `zoom: 0.8`** (user-pinned 2026-11-18 — "make everything 0.2x smaller;
+  it'll add more empty spaces around"). Viewport units are not used for height for exactly this
+  reason. The skip link sits outside the zoomed shell and stays full size. Do not "fix" the
+  whitespace or the zoom.
 - Composition order: h1 > wordmark → tagline → form (560px max) → fineprint, legal line pinned to
   the bottom via `margin-top: auto`.
 - Reading widths: form 560px; legal 60ch.
@@ -107,8 +112,16 @@ BL, violet BR), repositioned slightly at ≤640px, and the yellow marker behind 
 
 Present in the repo:
 
-- **index.astro** — the page: skip link, decorative sparkles, h1 > wordmark image (1 h1 only),
-  tagline, `.page__form` (id `waitlist`), legal line, `WaitlistForm`.
+- **index.astro** — the page: skip link, "?" explainer badge (top-right → `/docs`), decorative
+  sparkles, h1 > wordmark image (1 h1 only), tagline, `.page__form` (id `waitlist`), legal line,
+  `WaitlistForm`, `CookieBanner`.
+- **docs.astro** (`/docs`) — the "what is this thing" explainer for the curious: TL;DR card,
+  plain-language sections (the short version / what you actually do / why Arc / who it's for /
+  when it launches / the fine print), a JOIN THE WAITLIST button back to `/`, and its own legal
+  line. No new claims, no invented dates, no tokenomics.
+- **CookieBanner** — one-line honest note ("We don't do creepy tracking cookies. One localStorage
+  note so we don't nag you. That's it.") with a single GOT IT action; dismissal persists in
+  `localStorage` (`akipoly:cookie-ack`); `role="region"` + label; reduced-motion safe.
 - **WaitlistForm** — `#waitlist-form`. Label "Email address"; white 56px input (3px ink border,
   yellow hard shadow); inline error `.field__error` (`role="alert"`, icon + #a33a2a text,
   `#ffe9e2` fill); submit `.btn.btn--lg` (spinner + "Rolling…" while running); `.form-alert`

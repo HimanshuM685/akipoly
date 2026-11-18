@@ -21,7 +21,7 @@ OWN-WORLD: Warm Ivory (#FFFDF2) ground with a faint ink dot grid; one Electric Y
 
 STORY: Visitor lands → registers the raccoon wordmark → reads "we create monopoly on arc" → types one email → joins → lime success panel with a share button. Nothing else competes for attention, ever.
 
-FIRST VIEWPORT (= the whole page): centred column at 100dvh. Official wordmark (clamp 230–400px wide), tagline (Space Grotesk 700) with yellow stroke on "monopoly" (rotated −1°), the form (560px max): 56px white input + JOIN THE WAITLIST button, fineprint underneath, legal line pinned to the bottom, four sparkles at the corners. Mobile: identical stack, full-width button. The primary action is the only element with a hard shadow on the page.
+FIRST VIEWPORT (= the whole page): centred column. Official wordmark (clamp 230–400px wide), tagline (Space Grotesk 700) with yellow stroke on "monopoly" (rotated −1°), the form (560px max): 56px white input + JOIN THE WAITLIST button, fineprint underneath, legal line pinned to the bottom, four sparkles at the corners — all rendered at `zoom: 0.8` (user-pinned 2026-11-18: "make everything 0.2x smaller; it'll add more empty spaces around"). Mobile: identical stack, full-width button. The primary action is the only element with a hard shadow on the page.
 
 FORM: seed: none (pinned). The shape is pinned by the user on 2026-11-18, verbatim: "what if 'the splash' was the page. the logo (a little smaller than now), subtext : we create monopoly on arc, and then join waitlist with email form. remove the crosss thing." The world stays "bright neobrutalism meets arcade gaming" (design.md). Brand mark per PRODUCT.md.
 

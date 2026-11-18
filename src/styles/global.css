@@ -61,12 +61,14 @@
 }
 
 html {
+  height: 100%;
   caret-color: var(--color-ink);
   scrollbar-color: var(--color-ink) var(--color-paper);
   scroll-behavior: smooth;
 }
 
 body {
+  height: 100%;
   font-family: var(--font-body);
   font-size: 16px;
   line-height: 1.6;
@@ -76,7 +78,6 @@ body {
   background-image: radial-gradient(rgba(23, 23, 23, 0.09) 1.4px, transparent 1.4px);
   background-size: 26px 26px;
   -webkit-font-smoothing: antialiased;
-  overflow-x: clip;
 }
 
 svg {
@@ -194,7 +195,11 @@ svg {
 /* ------------------------------------------------------------------ */
 
 .page {
-  min-height: 100dvh;
+  /* User-pinned (2026-11-18): the whole composition renders at 80%,
+     leaving generous negative space around the mark. */
+  zoom: 0.8;
+  height: 100%;
+  overflow: auto; /* scrolls internally only on very short viewports */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -437,6 +442,233 @@ svg {
   margin-top: var(--space-4);
   font-size: 0.8rem;
   color: rgba(23, 23, 23, 0.62);
+}
+
+/* ------------------------------------------------------------------ */
+/*  "?" explainer badge (top-right)                                    */
+/* ------------------------------------------------------------------ */
+
+.page__help {
+  position: absolute;
+  top: clamp(12px, 2.5vw, 22px);
+  right: clamp(12px, 2.5vw, 22px);
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  background: var(--color-paper);
+  border: var(--border-width) solid var(--color-ink);
+  border-radius: var(--radius-button);
+  box-shadow: 4px 4px 0 var(--color-ink);
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  line-height: 1;
+  color: var(--color-ink);
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease;
+}
+
+.page__help:hover {
+  background: var(--color-primary);
+  transform: translate(2px, -2px) rotate(-3deg);
+  box-shadow: 6px 6px 0 var(--color-ink);
+}
+
+.page__help:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 var(--color-ink);
+}
+
+.page__help:focus-visible {
+  outline: 3px solid var(--color-ink);
+  outline-offset: 3px;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Cookie banner                                                      */
+/* ------------------------------------------------------------------ */
+
+.cookie {
+  position: fixed;
+  bottom: var(--space-4);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  max-width: min(560px, calc(100vw - 2rem));
+  padding: 12px 12px 12px 16px;
+  background: var(--color-white);
+  border: var(--border-width) solid var(--color-ink);
+  border-radius: var(--radius-card);
+  box-shadow: 4px 4px 0 var(--color-ink);
+  transition:
+    transform 200ms ease,
+    opacity 200ms ease;
+}
+
+.cookie--closing {
+  transform: translate(-50%, 140%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.cookie__copy {
+  font-size: 0.82rem;
+  line-height: 1.45;
+  text-align: left;
+}
+
+.cookie__btn {
+  flex-shrink: 0;
+  min-height: 44px;
+  padding: 0 16px;
+  font-size: 0.75rem;
+}
+
+@media (max-width: 560px) {
+  .cookie {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-3);
+  }
+
+  .cookie__btn {
+    width: 100%;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Docs (/docs)                                                       */
+/* ------------------------------------------------------------------ */
+
+.docs {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-6) clamp(1.25rem, 5vw, 3rem) var(--space-16);
+  scrollbar-color: var(--color-ink) var(--color-paper);
+}
+
+.docs__top {
+  width: min(760px, 100%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+  margin-bottom: var(--space-10);
+}
+
+.docs__back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-button);
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink);
+  text-decoration: none;
+}
+
+.docs__back:hover {
+  background: var(--color-primary);
+}
+
+.docs__back:focus-visible {
+  outline: 3px solid var(--color-ink);
+  outline-offset: 2px;
+}
+
+.docs__wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  text-decoration: none;
+  border-radius: var(--radius-button);
+}
+
+.docs__wordmark span {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  color: var(--color-ink);
+}
+
+.docs__wordmark:focus-visible {
+  outline: 3px solid var(--color-ink);
+  outline-offset: 3px;
+}
+
+.docs__tldr {
+  width: min(760px, 100%);
+  background: var(--color-ink);
+  color: var(--color-primary);
+  border: var(--border-width) solid var(--color-ink);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.95rem;
+  padding: var(--space-4) var(--space-5);
+  margin-bottom: var(--space-10);
+}
+
+.docs__title {
+  width: min(760px, 100%);
+  font-family: var(--font-display);
+  font-size: clamp(2.6rem, 9vw, 4.5rem);
+  line-height: 0.98;
+  margin-bottom: var(--space-12);
+}
+
+.docs__section {
+  width: min(760px, 100%);
+  margin-bottom: var(--space-10);
+}
+
+.docs__section h2 {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  margin-bottom: var(--space-3);
+}
+
+.docs__section p {
+  font-size: 1.02rem;
+  line-height: 1.65;
+  margin-bottom: var(--space-3);
+}
+
+.docs__list {
+  margin: var(--space-4) 0 var(--space-4);
+  padding-left: var(--space-6);
+}
+
+.docs__list li {
+  margin-bottom: var(--space-2);
+  line-height: 1.55;
+}
+
+.docs__list strong {
+  font-family: var(--font-display);
+  letter-spacing: 0.04em;
+}
+
+.docs__cta {
+  margin: var(--space-6) 0 var(--space-10);
+}
+
+.docs__cta .btn {
+  text-decoration: none;
 }
 
 /* ------------------------------------------------------------------ */

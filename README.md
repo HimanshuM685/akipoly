@@ -33,7 +33,9 @@ is the single integration seam.
 
 ```
 src/pages/index.astro          the page — one screen, one action
+src/pages/docs.astro           /docs — the "what is this thing" explainer
 src/components/WaitlistForm.astro  email form + success state + client script
+src/components/CookieBanner.astro  one-line cookie note (localStorage ack)
 src/styles/global.css          design tokens (from design.md) + all styles
 src/lib/waitlist.ts            waitlist integration seam
 public/icons/                  generated icon set (see below)
