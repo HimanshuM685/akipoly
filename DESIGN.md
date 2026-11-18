@@ -52,7 +52,7 @@ carries a check glyph.
 
 | Token | Value | Use |
 |---|---|---|
-| `--font-display` | `"Chango", "Arial Black", sans-serif` | Reserved for display moments (not currently set in markup — the artwork is the display voice) |
+| `--font-display` | `"Chango", "Arial Black", sans-serif` | The three buy/build/compete emphasis words in the docs list. Everything else is set in the body face; the artwork carries the display voice. |
 | `--font-body` | `"Space Grotesk", "Segoe UI", sans-serif` | Everything set in type: tagline, labels, buttons, fineprint, legal |
 
 Both load from Google Fonts with preconnect. No other families.
