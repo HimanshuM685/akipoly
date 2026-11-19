@@ -6,6 +6,7 @@
 import { spawn } from 'node:child_process';
 
 const url = process.argv[2]; // single screen; form is on the page itself
+const allowUnreachable = process.argv.includes('--allow-unreachable'); // on DNS-filtered networks the DB is unreachable by design
 const PORT = 9334;
 const CHROME = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 
@@ -99,8 +100,23 @@ results.valid = await evalJs(`(() => ({
   successVisible: !document.getElementById('waitlist-success').hidden,
   formHidden: document.getElementById('waitlist-form').hidden,
   fineprintHidden: document.getElementById('waitlist-fineprint').hidden,
-  stored: localStorage.getItem('akipoly:waitlist:last-submission'),
+  alertVisible: !document.getElementById('waitlist-alert').hidden,
+  alertText: document.getElementById('waitlist-alert-text')?.textContent ?? null,
 }))()`);
+
+// The endpoint depends on the database being reachable from this machine.
+// On DNS-filtered networks Neon is unreachable by design: assert the form
+// either reaches the success state OR shows the explicit error state.
+results.validOk = results.valid.successVisible || results.valid.alertVisible;
+results.validStrictOk = results.valid.successVisible;
+if (!results.validOk) {
+  console.error('Expected either the success state or the explicit error state — neither appeared.');
+  process.exitCode = 1;
+}
+if (!allowUnreachable && !results.validStrictOk) {
+  console.error('Expected the success state (strict mode). Got the error state instead:', results.valid.alertText);
+  process.exitCode = 1;
+}
 
 // 3. Share link points at an X intent with a preloaded caption
 results.share = await evalJs(`(() => {

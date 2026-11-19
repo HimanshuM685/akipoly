@@ -2,7 +2,7 @@
   "name": "akipoly",
   "type": "module",
   "version": "0.1.0",
-  "description": "Akipoly — the property-trading board game reimagined as an arcade GameFi. Single-page waitlist site.",
+  "description": "akipoly - the property-trading board game reimagined as an arcade GameFi. Single-page waitlist site with one serverless endpoint.",
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
@@ -10,8 +10,11 @@
   },
   "dependencies": {
     "@astrojs/react": "^7.1.9",
+    "@astrojs/vercel": "^11.0.22",
+    "@neondatabase/serverless": "^1.2.1",
     "@privy-io/react-auth": "^3.52.0",
     "astro": "^7.4.12",
+    "pg": "^8.23.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   }
