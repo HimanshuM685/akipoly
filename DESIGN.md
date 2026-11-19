@@ -112,9 +112,17 @@ BL, violet BR), repositioned slightly at ≤640px, and the yellow marker behind 
 
 Present in the repo:
 
-- **index.astro** — the page: skip link, "?" explainer badge (top-right → `/docs`), decorative
+- **index.astro** — the page: skip link, "?" explainer badge (top-right → `/docs`),
+  "dashboard" action chip directly below it (→ `/dashboard`, new tab), decorative
   sparkles, h1 > wordmark image (1 h1 only), tagline, `.page__form` (id `waitlist`), legal line,
   `WaitlistForm`, `CookieBanner`.
+- **dashboard.astro** (`/dashboard`) — Privy-gated seat on Arc Testnet. Static shell (back link,
+  wordmark, sparkle, legal line) + a `Dashboard.tsx` React island (`client:only="react"`) wired
+  to Privy (`PrivyProvider`, `embeddedWallets.ethereum.createOnLogin: 'users-without-wallets'`,
+  `defaultChain: arcTestnet` from `viem/chains`). Logged out: "sign in to claim your seat." +
+  yellow sign-in button. Logged in: "you're in." + wallet card (address + copy, USDC balance
+  via `getBalance` on the Arc RPC, explorer link, sign out). Recipient of the landing page's
+  "dashboard" chip (opens in a new tab).
 - **docs.astro** (`/docs`) — the "what is this thing" explainer for the curious: TL;DR card,
   plain-language sections (the short version / what you actually do / why Arc / who it's for /
   when it launches / the fine print), a JOIN THE WAITLIST button back to `/`, and its own legal

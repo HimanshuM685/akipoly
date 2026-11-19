@@ -527,6 +527,49 @@ svg {
   outline-offset: 3px;
 }
 
+/* Small action chip below the "?" — opens the dashboard in a new tab */
+.page__dash {
+  position: absolute;
+  top: clamp(68px, calc(2.5vw + 56px), 86px);
+  right: clamp(12px, 2.5vw, 22px);
+  z-index: 30;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 14px;
+  background: var(--color-paper);
+  border: var(--border-width) solid var(--color-ink);
+  border-radius: var(--radius-button);
+  box-shadow: 4px 4px 0 var(--color-ink);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease;
+}
+
+.page__dash:hover {
+  background: var(--color-primary);
+  transform: translate(2px, -2px);
+  box-shadow: 6px 6px 0 var(--color-ink);
+}
+
+.page__dash:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 var(--color-ink);
+}
+
+.page__dash:focus-visible {
+  outline: 3px solid var(--color-ink);
+  outline-offset: 3px;
+}
+
 /* ------------------------------------------------------------------ */
 /*  Cookie banner                                                      */
 /* ------------------------------------------------------------------ */
@@ -776,6 +819,215 @@ svg {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Dashboard (/dashboard)                                             */
+/* ------------------------------------------------------------------ */
+
+.dash {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-6) clamp(1.25rem, 5vw, 3rem) var(--space-12);
+  position: relative;
+  overflow: clip;
+}
+
+.dash__top {
+  width: min(760px, 100%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+  margin-bottom: var(--space-10);
+}
+
+.dash__title {
+  width: min(760px, 100%);
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: clamp(1.9rem, 6.5vw, 3.1rem);
+  letter-spacing: -0.025em;
+  line-height: 1;
+  margin-bottom: var(--space-6);
+}
+
+.dash__panel {
+  width: min(620px, 100%);
+  background: var(--color-white);
+  border: var(--border-width) solid var(--color-ink);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-float);
+  padding: clamp(1.5rem, 4vw, 2.5rem);
+}
+
+.dash__loading {
+  font-weight: 700;
+  color: rgba(23, 23, 23, 0.6);
+}
+
+.dash__stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.dash__heading {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: clamp(1.5rem, 4.5vw, 2rem);
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+
+.dash__copy {
+  font-size: 1.02rem;
+  line-height: 1.6;
+  color: rgba(23, 23, 23, 0.88);
+}
+
+.dash__fineprint {
+  font-size: 0.8rem;
+  color: rgba(23, 23, 23, 0.55);
+}
+
+.dash__btn {
+  text-transform: none;
+  letter-spacing: 0.03em;
+  align-self: flex-start;
+}
+
+.dash__wallet {
+  background: var(--color-paper);
+  border: var(--border-width) solid var(--color-ink);
+  border-radius: var(--radius-card);
+  padding: var(--space-4) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.dash__wallet-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.dash__wallet-label {
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(23, 23, 23, 0.55);
+}
+
+.dash__wallet-tag {
+  background: var(--color-primary);
+  border: 2px solid var(--color-ink);
+  border-radius: var(--radius-badge);
+  font-weight: 700;
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 3px 10px;
+}
+
+.dash__address-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.dash__address {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 1.05rem;
+}
+
+.dash__copybtn {
+  background: var(--color-ink);
+  color: var(--color-paper);
+  border: none;
+  border-radius: var(--radius-badge);
+  min-height: 36px;
+  padding: 0 12px;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform 150ms ease;
+}
+
+.dash__copybtn:hover {
+  transform: translateY(-2px);
+}
+
+.dash__copybtn:focus-visible {
+  outline: 3px solid var(--color-ink);
+  outline-offset: 2px;
+}
+
+.dash__balance-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  border-top: 1px solid rgba(23, 23, 23, 0.18);
+  padding-top: var(--space-3);
+}
+
+.dash__balance {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 1.35rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.dash__balance-skeleton {
+  color: rgba(23, 23, 23, 0.35);
+  font-weight: 700;
+}
+
+.dash__linklike {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #a33a2a;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.dash__explorer {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--color-ink);
+  text-decoration: none;
+  border-bottom: 2px solid var(--color-primary);
+  align-self: flex-start;
+}
+
+.dash__explorer:hover {
+  background: var(--color-primary);
+}
+
+.dash__explorer:focus-visible {
+  outline: 3px solid var(--color-ink);
+  outline-offset: 2px;
+}
+
+.dash__signout {
+  background: var(--color-paper);
+  box-shadow: var(--shadow-card);
+}
+
+/* ------------------------------------------------------------------ */
 /*  Waterwave page transition                                          */
 /* ------------------------------------------------------------------ */
 
@@ -872,3 +1124,4 @@ html.wave-pending .waterwave {
     transition-duration: 0.01ms !important;
   }
 }
+

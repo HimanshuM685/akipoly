@@ -29,11 +29,35 @@ it validates, animates to a success state, and keeps the submission in this
 browser's `localStorage` only — nothing is sent anywhere. `src/lib/waitlist.ts`
 is the single integration seam.
 
+## /dashboard (Privy auth, Arc Testnet)
+
+`/dashboard` is a React island (Astro `@astrojs/react`, `client:only="react"`)
+gated by [Privy](https://docs.privy.io). Sign in with email/social/external
+wallet; a Privy-embedded wallet is created automatically on first sign in
+(`createOnLogin: 'users-without-wallets'`) on **Arc Testnet** (chain id
+5042002, native gas USDC, `viem/chains` provides `arcTestnet`). After login the
+page shows the wallet address (copy), live USDC balance read straight from the
+Arc RPC, the Arc explorer link, and sign out.
+
+Required env var (copy `.env.example` to `.env`, which is git-ignored):
+
+```sh
+PUBLIC_PRIVY_APP_ID=cmwn8o8ul00cg0gjwj5ly4uex   # your app id — public by design
+```
+
+**The Privy App Secret is configuration we will never touch.** It must not
+appear in `.env`, in source, or in any bundle; it belongs in a server-side
+backend when one exists. (The owner pasted it once in chat — treat it as
+compromised and rotate it in the Privy dashboard.)
+
+
 ## Structure
 
 ```
 src/pages/index.astro          the page — one screen, one action
 src/pages/docs.astro           /docs — the "what is this thing" explainer
+src/pages/dashboard.astro      /dashboard — Privy-gated Arc Testnet seat
+src/components/Dashboard.tsx    the /dashboard island (PrivyProvider, wallet, USDC balance)
 src/components/WaitlistForm.astro  email form + success state + client script
 src/components/CookieBanner.astro  one-line cookie note (localStorage ack)
 src/components/Waterwave.astro     the rising-tide page transition between / and /docs

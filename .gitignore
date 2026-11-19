@@ -4,3 +4,4 @@ dist/
 .gemini/
 .impeccable/mocks/
 .impeccable/review/
+.env
