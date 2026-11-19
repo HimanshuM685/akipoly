@@ -65,6 +65,11 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
       const next = await apiFetch<GameState>(`/api/games/${gameId}/state`);
       setState(next);
       setClock(next.round?.seconds_left ?? 30);
+
+      // Auto-settle when timer expires (round is in voting and time is up)
+      if (next.round?.status === 'voting' && next.round?.seconds_left! <= 0) {
+        await apiFetch(`/api/games/${gameId}/settle`, { method: 'POST' });
+      }
     } catch (err) {
       setError((err as Error).message);
     }

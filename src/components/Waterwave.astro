@@ -30,7 +30,7 @@
       document.documentElement.classList.remove('wave-pending');
       overlay.classList.add('waterwave--leaving');
       const done = () => {
-        overlay.classList.remove('waterwave--leaving');
+        overlay.classList.remove('waterwave--leaving'); 
         try {
           sessionStorage.removeItem(NAV_FLAG);
         } catch {
