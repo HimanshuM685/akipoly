@@ -79,6 +79,11 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
   };
 
   const vote = async (choice: 'higher' | 'lower') => {
+    if (votingChoice === choice) return;
+    if (votingChoice) {
+      setError('already locked in');
+      return;
+    }
     setVotingChoice(choice);
     try {
       await apiFetch(`/api/games/${gameId}/vote`, {
@@ -87,8 +92,9 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
       });
       await load();
     } catch (err) {
-      setError((err as Error).message);
+      // Server rejected — you already locked in. Keep the first vote.
       setVotingChoice(null);
+      setError((err as Error).message);
     }
   };
 
@@ -150,19 +156,24 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
             <div className="game__vote">
               <button
                 type="button"
+                disabled={votingChoice !== null}
                 className={`game__choice game__choice--higher ${votingChoice === 'higher' ? 'game__choice--active' : ''}`}
                 onClick={() => vote('higher')}
+                aria-pressed={votingChoice === 'higher'}
               >
                 higher
               </button>
               <button
                 type="button"
+                disabled={votingChoice !== null}
                 className={`game__choice game__choice--lower ${votingChoice === 'lower' ? 'game__choice--active' : ''}`}
                 onClick={() => vote('lower')}
+                aria-pressed={votingChoice === 'lower'}
               >
                 lower
               </button>
             </div>
+            {votingChoice && <p className="game__locked">locked in: {votingChoice}</p>}
           )}
         </>
       )}

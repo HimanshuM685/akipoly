@@ -227,10 +227,15 @@ export async function vote(
   );
   if (eliminated.rowCount) throw new HttpError(409, 'you are out — you cannot vote');
 
+  const existingVote = await client.query(
+    'select vote from public.round_votes where round_id = $1 and user_id = $2',
+    [round.id, userId],
+  );
+  if (existingVote.rowCount) throw new HttpError(409, 'you already locked in');
+
   await client.query(
     `insert into public.round_votes (round_id, user_id, vote)
-     values ($1, $2, $3)
-     on conflict (round_id, user_id) do update set vote = excluded.vote, locked_at = now()`,
+     values ($1, $2, $3)`,
     [round.id, userId, choice],
   );
   return { ok: true };

@@ -1528,6 +1528,20 @@ svg {
   font-size: 1.4rem;
 }
 
+.game__choice:disabled {
+  cursor: not-allowed;
+}
+
+.game__choice:disabled:not(.game__choice--active) {
+  opacity: 0.45;
+}
+
+.game__locked {
+  text-align: center;
+  font-weight: 700;
+  color: rgba(23, 23, 23, 0.75);
+}
+
 .game__hint--out {
   color: #a33a2a;
 }
