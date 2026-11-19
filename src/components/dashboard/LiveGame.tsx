@@ -56,6 +56,14 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
   const [commitment, setCommitment] = useState('');
   const [clock, setClock] = useState(30);
 
+  // Derived values — declared BEFORE useEffect calls that reference them
+  const round = state?.round ?? null;
+  const ended = state?.game.ended ?? false;
+  const isHost = state?.me.is_host ?? false;
+  const playersLeft = state?.players.filter((p) => !p.is_host && !p.is_eliminated).length ?? 0;
+  const votesIn = state?.players.filter((p) => !p.is_host && p.vote_locked).length ?? 0;
+  const totalPool = round ? round.high_pool + round.low_pool : 0;
+
   const load = useCallback(async () => {
     try {
       const next = await apiFetch<GameState>(`/api/games/${gameId}/state`);
@@ -87,13 +95,6 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
   }, [state?.me.vote]);
 
   const lockedIn = state?.me.vote === 'higher' || state?.me.vote === 'lower';
-  const round = state?.round ?? null;
-  const ended = state?.game.ended ?? false;
-  const isHost = state?.me.is_host ?? false;
-  const playersLeft = state?.players.filter((p) => !p.is_host && !p.is_eliminated).length ?? 0;
-  const votesIn = state?.players.filter((p) => !p.is_host && p.vote_locked).length ?? 0;
-  const totalPool = round ? round.high_pool + round.low_pool : 0;
-
   const winner = ended && state?.game.winner_user_id
     ? state.players.find((p) => p.user_id === state.game.winner_user_id)
     : null;
