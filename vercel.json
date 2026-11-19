@@ -3,14 +3,5 @@
   "devCommand": "npm run dev",
   "installCommand": "npm install",
   "framework": "astro",
-  "regions": ["iad1"],
-  "env": {
-    "DATABASE_URL": "@akipoly-database-url",
-    "DATABASE_TLS_SERVERNAME": "@akipoly-database-tls-servername",
-    "PUBLIC_PRIVY_APP_ID": "@akipoly-privy-app-id"
-  },
-  "routes": [
-    { "src": "/api/(.*)", "dest": "/api/$1" },
-    { "src": "/(.*)", "dest": "/$1" }
-  ]
+  "regions": ["iad1"]
 }
