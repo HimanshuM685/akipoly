@@ -72,6 +72,11 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
     return () => window.clearInterval(poll);
   }, [load]);
 
+  // Reset commitment when round changes so cross-round contamination doesn't occur
+  useEffect(() => {
+    setCommitment('');
+  }, [round?.id]);
+
   useEffect(() => {
     const t = window.setInterval(() => setClock((s) => Math.max(0, s - 1)), 1000);
     return () => window.clearInterval(t);
@@ -109,7 +114,7 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
     if (!round) return;
     setCommitting(true);
     try {
-      const c = hashSeedLocal(commitment || seed || `${gameId}:${round.number}:${Date.now()}`);
+      const c = hashSeedLocal(seed);
       setCommitment(c);
       await apiFetch(`/api/games/${gameId}/commit`, {
         method: 'POST',
