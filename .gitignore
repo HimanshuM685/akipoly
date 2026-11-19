@@ -4,7 +4,5 @@ dist/
 .gemini/
 .impeccable/mocks/
 .impeccable/review/
-.env
-.vercel/
-.vercel
 .env*
+.vercel/
