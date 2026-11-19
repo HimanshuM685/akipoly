@@ -19,6 +19,19 @@ export const POST = apiRoute(async ({ params, userId, request }) =>
     }
 
     await ensureAppUser(client, userId);
+    if (force) {
+      // Only the host may force an early settle (respin).
+      const hostRes = await client.query(
+        `select l.host_user_id from public.games g
+           join public.lobbies l on l.id = g.lobby_id
+          where g.id = $1`,
+        [gameId],
+      );
+      if (hostRes.rowCount === 0) return json({ error: 'game not found' }, 404);
+      if (hostRes.rows[0].host_user_id !== userId) {
+        return json({ error: 'only the host can respin' }, 403);
+      }
+    }
     const result = await settleRound(client, gameId, force);
     return json(result);
   }),
