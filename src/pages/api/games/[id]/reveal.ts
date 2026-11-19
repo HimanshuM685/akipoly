@@ -1,5 +1,5 @@
 import { apiRoute, json } from '../../../../lib/server/helpers';
-import { withClient, HttpError } from '../../../../lib/server/db';
+import { withClient, withClientRetry, HttpError } from '../../../../lib/server/db';
 import { ensureAppUser } from '../../../../lib/server/users';
 import { revealRandomness } from '../../../../lib/server/game';
 
@@ -11,7 +11,7 @@ export const GET = apiRoute(async () => {
 
 export const POST = apiRoute(async ({ params, userId, request }) => {
   try {
-    return await withClient(async (client) => {
+    return await withClientRetry(async (client) => {
       const gameId = params.id;
       if (!gameId) return json({ error: 'Missing game id.' }, 400);
 
