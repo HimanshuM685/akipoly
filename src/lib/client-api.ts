@@ -1,13 +1,10 @@
 /**
  * React hook: returns a fetch wrapper that attaches the Privy identity token.
- * Falls back gracefully to plain fetch if the token can't be fetched (dev w/o privy configured).
  */
 import { useCallback } from 'react';
-import { usePrivy } from '@privy-io/react-auth';
+import { getIdentityToken } from '@privy-io/react-auth';
 
 export function useApiFetch() {
-  const { getIdentityToken } = usePrivy();
-
   return useCallback(
     async <T = unknown>(path: string, options: RequestInit = {}): Promise<T> => {
       const headers = new Headers(options.headers);
@@ -15,8 +12,9 @@ export function useApiFetch() {
       try {
         const token = await getIdentityToken();
         if (token) headers.set('Authorization', `Bearer ${token}`);
-      } catch {
-        // No token — server will respond 401; UI should handle.
+        else console.warn('[useApiFetch] no identity token available — server will respond 401');
+      } catch (err) {
+        console.error('[useApiFetch] failed to get identity token:', err);
       }
       const res = await fetch(path, { ...options, headers });
       if (!res.ok) {
@@ -31,6 +29,6 @@ export function useApiFetch() {
       }
       return res.json() as Promise<T>;
     },
-    [getIdentityToken],
+    [],
   );
 }
