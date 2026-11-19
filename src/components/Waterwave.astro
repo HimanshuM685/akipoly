@@ -1,9 +1,10 @@
 <!--
-  Waterwave page transition between / and /docs — a rising, rolling tide in
-  brand colours. MPA-friendly: the outgoing page animates the tide up,
-  navigates, and the incoming page (flagged via sessionStorage) starts
-  covered and drains the tide down. Without JS or with reduced motion,
-  navigation is a plain full-page load.
+  Waterwave page transition — a rising, rolling tide in brand colours.
+  MPA-friendly: the outgoing page animates the tide up, navigates, and the
+  incoming page (flagged via sessionStorage) starts covered and drains the
+  tide away. Any plain internal link plays it unless it opts out with
+  data-wave="off" (or opens a new tab / download). Without JS or with reduced
+  motion, navigation is a plain full-page load.
 -->
 <div class="waterwave" id="waterwave" aria-hidden="true">
   <svg class="waterwave__sea" viewBox="0 -120 2880 540" preserveAspectRatio="none" focusable="false">
@@ -22,7 +23,6 @@
   if (overlay) {
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const NAV_FLAG = 'akipoly:wave-nav';
-    const isNavLink = (href: string) => href === '/' || href === '/docs';
 
     // Incoming navigation: start covered (set pre-paint by the inline head
     // script), then drain the tide away.
@@ -47,10 +47,27 @@
       if (reduced) return;
       const anchor = (event.target as HTMLElement).closest?.('a[href]') as HTMLAnchorElement | null;
       if (!anchor) return;
+
       const href = anchor.getAttribute('href') ?? '';
-      if (!isNavLink(href)) return;
-      // Respect new-tab / new-window gestures.
-      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
+      const target = anchor.getAttribute('target');
+
+      // Only plain internal page navigations; leave new tabs, downloads,
+      // hash-only links and opt-outs to the browser.
+      if (
+        !href.startsWith('/') ||
+        href.startsWith('//') ||
+        href.includes('#') ||
+        target === '_blank' ||
+        anchor.hasAttribute('download') ||
+        anchor.dataset.wave === 'off' ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey ||
+        event.button !== 0
+      ) {
+        return;
+      }
 
       event.preventDefault();
       try {
