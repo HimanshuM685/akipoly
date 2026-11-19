@@ -39,7 +39,9 @@ export const POST: APIRoute = async ({ request }) => {
   const cleanSource =
     typeof source === 'string' && source.trim() ? source.trim().slice(0, 64) : 'landing-page';
 
-  const databaseUrl = process.env.DATABASE_URL;
+  // Astro exposes .env through import.meta.env (its dev server does not copy
+  // it into process.env); Vercel functions also have it on process.env.
+  const databaseUrl = process.env.DATABASE_URL ?? import.meta.env.DATABASE_URL;
   if (!databaseUrl) {
     console.error('[waitlist] DATABASE_URL is not configured');
     return json({ error: 'Waitlist is not configured yet. Try again soon.' }, 503);
@@ -47,7 +49,7 @@ export const POST: APIRoute = async ({ request }) => {
 
   // Optional override for networks whose DNS refuses the Neon hostname:
   // dial the pooler IP while validating the real cert via SNI.
-  const servername = process.env.DATABASE_TLS_SERVERNAME;
+  const servername = process.env.DATABASE_TLS_SERVERNAME ?? import.meta.env.DATABASE_TLS_SERVERNAME;
 
   const client = new pg.Client({
     connectionString: databaseUrl,
