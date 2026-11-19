@@ -1027,6 +1027,94 @@ svg {
   box-shadow: var(--shadow-card);
 }
 
+/* Game pools display */
+.game__pools {
+  display: flex;
+  gap: var(--space-4);
+  justify-content: center;
+  margin-bottom: var(--space-4);
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: rgba(23, 23, 23, 0.78);
+}
+
+.game__pool {
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-white);
+  border: var(--border-width) solid var(--color-ink);
+  border-radius: var(--radius-badge);
+  box-shadow: 4px 4px 0 var(--color-ink);
+}
+
+/* Commit-reveal section */
+.game__commit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: center;
+  margin-bottom: var(--space-6);
+}
+
+.game__commit input {
+  height: 48px;
+  padding: 0 16px;
+  border: var(--border-width) solid var(--color-ink);
+  border-radius: var(--radius-input);
+  background: var(--color-white);
+  font: inherit;
+  font-size: 0.95rem;
+  min-width: 200px;
+}
+
+/* Bet placement section */
+.game__bet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: center;
+  margin-bottom: var(--space-4);
+}
+
+.game__bet label {
+  font-weight: 700;
+  font-size: 0.8rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-ink);
+}
+
+.game__bet input[type="number"] {
+  height: 48px;
+  padding: 0 16px;
+  border: var(--border-width) solid var(--color-ink);
+  border-radius: var(--radius-input);
+  background: var(--color-white);
+  font: inherit;
+  font-size: 0.95rem;
+  text-align: center;
+  min-width: 120px;
+}
+
+.game__choice {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.game__choice button {
+  min-width: 100px;
+}
+
+/* Claim section */
+.game__claim {
+  margin-top: var(--space-6);
+  text-align: center;
+}
+
+.game__claim .game__hint {
+  margin-bottom: var(--space-3);
+}
+
 /* ------------------------------------------------------------------ */
 /*  Dashboard — game surface                                           */
 /* ------------------------------------------------------------------ */
