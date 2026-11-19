@@ -22,6 +22,8 @@ export default function LobbyBrowser({ onOpen }: Props) {
   const [name, setName] = useState('');
   const [creating, setCreating] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [pendingAction, setPendingAction] = useState<{ type: 'create' } | { type: 'join'; lobbyId: string } | null>(null);
+  const [displayName, setDisplayName] = useState('');
 
   const load = useCallback(
     (soft = false) => {
@@ -40,31 +42,34 @@ export default function LobbyBrowser({ onOpen }: Props) {
 
   useEffect(load, [load]);
 
-  const createLobby = async () => {
-    if (!name.trim()) return;
+  const commitName = async () => {
+    if (!pendingAction) return;
+    const clean = displayName.trim().slice(0, 32);
+    if (!clean) return;
+
     setCreating(true);
     setError(null);
     try {
-      const res = await apiFetch<{ lobby: Lobby }>('/api/lobbies', {
-        method: 'POST',
-        body: JSON.stringify({ name: name.trim() }),
-      });
-      setName('');
-      onOpen(res.lobby.id);
+      if (pendingAction.type === 'create') {
+        const res = await apiFetch<{ lobby: Lobby }>('/api/lobbies', {
+          method: 'POST',
+          body: JSON.stringify({ name: name.trim(), displayName: clean }),
+        });
+        setName('');
+        setPendingAction(null);
+        onOpen(res.lobby.id);
+      } else {
+        await apiFetch(`/api/lobbies/${pendingAction.lobbyId}/join`, {
+          method: 'POST',
+          body: JSON.stringify({ displayName: clean }),
+        });
+        setPendingAction(null);
+        onOpen(pendingAction.lobbyId);
+      }
     } catch (err) {
       setError((err as Error).message);
     } finally {
       setCreating(false);
-    }
-  };
-
-  const joinLobby = async (id: string) => {
-    setError(null);
-    try {
-      await apiFetch(`/api/lobbies/${id}/join`, { method: 'POST' });
-      onOpen(id);
-    } catch (err) {
-      setError((err as Error).message);
     }
   };
 
@@ -90,7 +95,9 @@ export default function LobbyBrowser({ onOpen }: Props) {
         className="lobbies__create"
         onSubmit={(e) => {
           e.preventDefault();
-          createLobby();
+          if (!name.trim()) return;
+          setDisplayName('');
+          setPendingAction({ type: 'create' });
         }}
       >
         <input
@@ -102,8 +109,8 @@ export default function LobbyBrowser({ onOpen }: Props) {
           onChange={(e) => setName(e.target.value)}
           aria-label="Lobby name"
         />
-        <button type="submit" className="btn dash__btn" disabled={creating || !name.trim()}>
-          {creating ? 'opening…' : 'open lobby'}
+        <button type="submit" className="btn dash__btn" disabled={!name.trim()}>
+          open lobby
         </button>
       </form>
 
@@ -127,12 +134,61 @@ export default function LobbyBrowser({ onOpen }: Props) {
                 <span className="lobbies__count">{lobby.players}/{lobby.max_players} players</span>
                 <span className="lobbies__tag">{lobby.status === 'live' ? 'live' : 'waiting'}</span>
               </div>
-              <button type="button" className="btn lobbies__join" onClick={() => joinLobby(lobby.id)}>
+              <button
+                type="button"
+                className="btn lobbies__join"
+                onClick={() => {
+                  if (lobby.seated) {
+                    onOpen(lobby.id);
+                    return;
+                  }
+                  setDisplayName('');
+                  setPendingAction({ type: 'join', lobbyId: lobby.id });
+                }}
+              >
                 {lobby.seated ? 'rejoin' : 'join'}
               </button>
             </li>
           ))}
         </ul>
+      )}
+
+      {pendingAction && (
+        <div className="name-modal" role="dialog" aria-modal="true" aria-labelledby="name-modal-title">
+          <div className="name-modal__panel">
+            <h3 id="name-modal-title" className="name-modal__title">who are you?</h3>
+            <p className="name-modal__copy">
+              pick a display name for this lobby. once you take the seat, that's you for the rest of the game.
+            </p>
+            <input
+              className="lobbies__input"
+              autoFocus
+              maxLength={32}
+              type="text"
+              placeholder="display name…"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') commitName();
+                if (e.key === 'Escape') setPendingAction(null);
+              }}
+              aria-label="Display name"
+            />
+            <div className="name-modal__actions">
+              <button type="button" className="btn name-modal__cancel" onClick={() => setPendingAction(null)}>
+                cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn--lg name-modal__confirm"
+                onClick={commitName}
+                disabled={creating || !displayName.trim()}
+              >
+                {creating ? 'saving…' : 'save my seat'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

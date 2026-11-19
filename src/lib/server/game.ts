@@ -10,8 +10,9 @@
  *  - on settle: wrong call → out; equal ball is a push (nobody out)
  *  - no vote before the timer ends → out
  *  - last player standing wins
+ *  - rounds ALWAYS run the full 30s cooldown (host may force-respin earlier)
  */
-import { randomInt } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 import { HttpError } from './db';
 
 export const ROUND_SECONDS = 30;
@@ -20,7 +21,6 @@ export const MAX_PLAYERS = 10;
 interface SeatRow {
   user_id: string;
   display_name: string | null;
-  wallet_address: string | null;
   joined_at: string;
 }
 
@@ -44,7 +44,23 @@ export interface GameSnapshot {
     opened_at: string;
     seconds_left: number;
   };
-  me: { is_host: boolean; is_seated: boolean; is_eliminated: boolean; vote: string | null };
+  me: {
+    is_host: boolean;
+    is_seated: boolean;
+    is_eliminated: boolean;
+    vote: string | null;
+    needs_name: boolean;
+  };
+}
+
+// Uniform 0–16 from raw bytes with rejection sampling. No modulo bias.
+function randomBall(): number {
+  const max = 17;
+  const bucket = 256 - (256 % max);
+  for (;;) {
+    const byte = randomBytes(1)[0];
+    if (byte < bucket) return byte % max;
+  }
 }
 
 export async function snapshotGame(
@@ -64,7 +80,7 @@ export async function snapshotGame(
   const g = gameRes.rows[0];
 
   const seatsRes = await client.query(
-    `select s.user_id, u.display_name, u.wallet_address, s.joined_at
+    `select s.user_id, coalesce(s.display_name, u.display_name) as display_name, s.joined_at
        from public.lobby_seats s
        join public.app_users u on u.privy_user_id = s.user_id
       where s.lobby_id = $1
@@ -110,7 +126,7 @@ export async function snapshotGame(
 
   const meVote = meUserId ? votes.get(meUserId) ?? null : null;
   const meResult = meUserId ? results.get(meUserId) : null;
-  const meSeat = meUserId ? seats.some((s) => s.user_id === meUserId) : false;
+  const meSeat = meUserId ? seats.find((s) => s.user_id === meUserId) ?? null : null;
 
   const secondsLeft = roundRow
     ? Math.max(0, ROUND_SECONDS - Math.floor((Date.now() - new Date(roundRow.opened_at).getTime()) / 1000))
@@ -132,14 +148,14 @@ export async function snapshotGame(
       : null,
     me: {
       is_host: meUserId === g.host_user_id,
-      is_seated: meSeat,
+      is_seated: meSeat != null,
       is_eliminated: meResult?.eliminated_round != null,
       vote: meVote,
+      needs_name: meSeat != null && !meSeat.display_name,
     },
   };
 }
 
-/** Create round 1 waiting for a spin when a game starts. */
 export async function createFirstRound(client: import('pg').Client, gameId: string) {
   await client.query(
     `insert into public.rounds (game_id, round_number, status) values ($1, 1, 'awaiting_spin')`,
@@ -148,7 +164,6 @@ export async function createFirstRound(client: import('pg').Client, gameId: stri
 }
 
 export async function spin(client: import('pg').Client, gameId: string, userId: string) {
-  // Lock the game row while we mutate the round.
   const gameRes = await client.query(
     `select g.id, g.lobby_id, l.host_user_id, l.status
        from public.games g join public.lobbies l on l.id = g.lobby_id
@@ -171,7 +186,7 @@ export async function spin(client: import('pg').Client, gameId: string, userId: 
     throw new HttpError(409, 'round already spinning or settled');
   }
 
-  const ball = randomInt(0, 17); // 0..16 uniform
+  const ball = randomBall();
   await client.query(
     `update public.rounds
         set ball = $1, status = 'voting', opened_at = now()
@@ -213,7 +228,6 @@ export async function vote(
   if (!round) throw new HttpError(409, 'no active round');
   if (round.status !== 'voting') throw new HttpError(409, 'round is not open for votes');
 
-  // Seated, non-eliminated players may vote.
   const eligibility = await client.query(
     `select 1 from public.lobby_seats s
       where s.lobby_id = (select lobby_id from public.games where id = $1) and s.user_id = $2`,
@@ -273,7 +287,6 @@ export async function settleRound(
   );
   const seats: Array<{ user_id: string }> = votersRes.rows;
 
-  // Previous ball (round 1 has none).
   let prevBall: number | null = null;
   if (round.round_number > 1) {
     const prev = await client.query(
@@ -289,7 +302,6 @@ export async function settleRound(
   );
   const votes = new Map(votesRes.rows.map((r) => [r.user_id, r.vote]));
 
-  // Who is still in?
   const eliminatedRes = await client.query(
     `select user_id from public.game_results where game_id = $1 and eliminated_round is not null`,
     [gameId],
@@ -298,17 +310,16 @@ export async function settleRound(
   const active = seats.filter((s) => !outIds.has(s.user_id));
 
   const expired = Date.now() > new Date(round.opened_at).getTime() + ROUND_SECONDS * 1000;
-  const everyoneVoted = active.length > 0 && active.every((s) => votes.has(s.user_id));
-  if (!force && !everyoneVoted && !expired) {
-    return { settled: false, reason: 'waiting for lock-ins' };
+  if (!force && !expired) {
+    return { settled: false, reason: 'waiting for the cooldown' };
   }
 
-  // Determine eliminations.
+  // Eliminations.
   const eliminatedThisRound: string[] = [];
   for (const s of active) {
     const vote = votes.get(s.user_id);
     let correct = true;
-    if (!vote) correct = false; // no lock-in = out
+    if (!vote) correct = false;
     else if (prevBall != null) {
       if (round.ball > prevBall) correct = vote === 'higher';
       else if (round.ball < prevBall) correct = vote === 'lower';
@@ -317,7 +328,6 @@ export async function settleRound(
     if (!correct) eliminatedThisRound.push(s.user_id);
   }
 
-  // Points: +1 for every survivor on a real comparison.
   const survivors = active.filter((s) => !eliminatedThisRound.includes(s.user_id));
   if (prevBall != null) {
     for (const s of survivors) {
@@ -344,54 +354,38 @@ export async function settleRound(
   );
 
   const survivorsNow = active.filter((s) => !eliminatedThisRound.includes(s.user_id));
-  // Game over only when the round actually produced eliminations and at most
-  // one non-host voter survives it. Round 1 never ends the game by itself.
   const gameOver = round.round_number >= 2 && survivorsNow.length <= 1;
   if (gameOver) {
-    // Game over — winner is the survivor (or the last eliminated).
-    const winner = survivorsNow[0]?.user_id ?? (eliminatedThisRound.length > 0 ? eliminatedThisRound[eliminatedThisRound.length - 1] : null);
+    const winner =
+      survivorsNow[0]?.user_id ??
+      (eliminatedThisRound.length > 0 ? eliminatedThisRound[eliminatedThisRound.length - 1] : null);
     await client.query(
       `update public.games set winner_user_id = $1, ended_at = now() where id = $2`,
       [winner, gameId],
     );
-    // Final placements: sorted by eliminated_round DESC, winner last.
-    const finalResults = await client.query(
-      `select gr.user_id, gr.eliminated_round, s.joined_at
-         from public.game_results gr
-         join public.lobby_seats s on s.lobby_id = $1 and s.user_id = gr.user_id
-        where gr.game_id = $2`,
-      [g.lobby_id, gameId],
-    );
-    const ordered = [...finalResults.rows].sort((a, b) => {
-      if (a.user_id === winner) return -1;
-      if (b.user_id === winner) return 1;
-      const ae = a.eliminated_round ?? 0;
-      const be = b.eliminated_round ?? 0;
-      return be - ae;
-    });
-    let place = 1;
-    for (const row of ordered) {
-      await client.query(
-        `update public.game_results set placement = $1 where game_id = $2 and user_id = $3`,
-        [place++, gameId, row.user_id],
-      );
-    }
 
-    // Dealer account never voted and was never eliminated — record them as well
-    // so career shows the game for the host too.
     const allSeats = await client.query(
       `select user_id from public.lobby_seats where lobby_id = $1`,
       [g.lobby_id],
     );
     for (const seat of allSeats.rows) {
+      if (seat.user_id !== winner) {
+        await client.query(
+          `insert into public.game_results (game_id, user_id, placement, points)
+           values ($1, $2, null, 0)
+           on conflict (game_id, user_id) do nothing`,
+          [gameId, seat.user_id],
+        );
+      }
+    }
+    if (winner) {
       await client.query(
         `insert into public.game_results (game_id, user_id, placement, points)
-         values ($1, $2, null, 0)
-         on conflict (game_id, user_id) do nothing`,
-        [gameId, seat.user_id],
+         values ($1, $2, 1, 0)
+         on conflict (game_id, user_id) do update set placement = 1`,
+        [gameId, winner],
       );
     }
-    // Players with no game_results row at all (host never voted, never out): count as last?
     await client.query(
       `update public.lobbies set status = 'finished', updated_at = now() where id = $1`,
       [g.lobby_id],
@@ -399,7 +393,6 @@ export async function settleRound(
     return { settled: true, game_over: true, winner, ball: round.ball };
   }
 
-  // Next round.
   await client.query(
     `insert into public.rounds (game_id, round_number, status) values ($1, $2, 'awaiting_spin')`,
     [gameId, round.round_number + 1],

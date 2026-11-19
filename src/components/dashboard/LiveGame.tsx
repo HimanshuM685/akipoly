@@ -23,7 +23,7 @@ interface GameState {
     opened_at: string;
     seconds_left: number;
   };
-  me: { is_host: boolean; is_seated: boolean; is_eliminated: boolean; vote: string | null };
+  me: { is_host: boolean; is_seated: boolean; is_eliminated: boolean; vote: string | null; needs_name: boolean };
 }
 
 interface Props {
@@ -35,8 +35,9 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
   const apiFetch = useApiFetch();
   const [state, setState] = useState<GameState | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [votingChoice, setVotingChoice] = useState<'higher' | 'lower' | null>(null);
+  const [intent, setIntent] = useState<'higher' | 'lower' | null>(null);
   const [spinning, setSpinning] = useState(false);
+  const [respawing, setRespawing] = useState(false);
   const [clock, setClock] = useState(30);
 
   const load = useCallback(async () => {
@@ -44,7 +45,6 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
       const next = await apiFetch<GameState>(`/api/games/${gameId}/state`);
       setState(next);
       setClock(next.round?.seconds_left ?? 30);
-      // Auto resolve rounds that have hit their timer or all lock-ins.
       await apiFetch(`/api/games/${gameId}/settle`, { method: 'POST' }).catch(() => undefined);
     } catch (err) {
       setError((err as Error).message);
@@ -63,8 +63,10 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
   }, []);
 
   useEffect(() => {
-    setVotingChoice(state?.me.vote === 'higher' || state?.me.vote === 'lower' ? state.me.vote : null);
+    setIntent(state?.me.vote === 'higher' || state?.me.vote === 'lower' ? state.me.vote : null);
   }, [state?.me.vote]);
+
+  const lockedIn = state?.me.vote === 'higher' || state?.me.vote === 'lower';
 
   const spin = async () => {
     setSpinning(true);
@@ -78,23 +80,31 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
     }
   };
 
-  const vote = async (choice: 'higher' | 'lower') => {
-    if (votingChoice === choice) return;
-    if (votingChoice) {
-      setError('already locked in');
-      return;
-    }
-    setVotingChoice(choice);
+  const lockIn = async () => {
+    if (!intent || lockedIn) return;
     try {
       await apiFetch(`/api/games/${gameId}/vote`, {
         method: 'POST',
-        body: JSON.stringify({ vote: choice }),
+        body: JSON.stringify({ vote: intent }),
       });
       await load();
     } catch (err) {
-      // Server rejected — you already locked in. Keep the first vote.
-      setVotingChoice(null);
       setError((err as Error).message);
+    }
+  };
+
+  const respin = async () => {
+    setRespawing(true);
+    try {
+      await apiFetch(`/api/games/${gameId}/settle`, {
+        method: 'POST',
+        body: JSON.stringify({ force: true }),
+      });
+      await load();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setRespawing(false);
     }
   };
 
@@ -117,7 +127,7 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
   const playersLeft = state.players.filter((p) => !p.is_host && !p.is_eliminated).length;
   const votesIn = state.players.filter((p) => !p.is_host && p.vote_locked).length;
 
-  const winPlayer = ended && state.game.winner_user_id
+  const winner = ended && state.game.winner_user_id
     ? state.players.find((p) => p.user_id === state.game.winner_user_id)
     : null;
 
@@ -147,34 +157,46 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
         <>
           <p className="game__clock" aria-label="Seconds left to lock in">{clock}s</p>
           {isHost ? (
-            <p className="game__hint">
-              players voting… {votesIn}/{playersLeft} locked in
-            </p>
+            <>
+              <p className="game__hint">
+                players voting… {votesIn}/{playersLeft} locked in
+              </p>
+              <button type="button" className="btn dash__btn" onClick={respin} disabled={respawing}>
+                {respawing ? 'respinning…' : 'respin the ball'}
+              </button>
+            </>
           ) : state.me.is_eliminated ? (
             <p className="game__hint game__hint--out">you are out — spectate till the end.</p>
+          ) : lockedIn ? (
+            <p className="game__locked">locked in: <strong>{state.me.vote}</strong> — waiting for the spin</p>
           ) : (
             <>
-              <div className="game__vote">
+              <div className="game__vote" role="group" aria-label="Pick your call">
                 <button
                   type="button"
-                  disabled={votingChoice !== null}
-                  className={`game__choice game__choice--higher ${votingChoice === 'higher' ? 'game__choice--active' : ''}`}
-                  onClick={() => vote('higher')}
-                  aria-pressed={votingChoice === 'higher'}
+                  aria-pressed={intent === 'higher'}
+                  className={`game__choice game__choice--higher ${intent === 'higher' ? 'game__choice--active' : ''}`}
+                  onClick={() => setIntent('higher')}
                 >
                   higher
                 </button>
                 <button
                   type="button"
-                  disabled={votingChoice !== null}
-                  className={`game__choice game__choice--lower ${votingChoice === 'lower' ? 'game__choice--active' : ''}`}
-                  onClick={() => vote('lower')}
-                  aria-pressed={votingChoice === 'lower'}
+                  aria-pressed={intent === 'lower'}
+                  className={`game__choice game__choice--lower ${intent === 'lower' ? 'game__choice--active' : ''}`}
+                  onClick={() => setIntent('lower')}
                 >
                   lower
                 </button>
               </div>
-              {votingChoice && <p className="game__locked">locked in: {votingChoice}</p>}
+              <button
+                type="button"
+                className="btn btn--lg game__lock"
+                disabled={!intent}
+                onClick={lockIn}
+              >
+                lock in
+              </button>
             </>
           )}
         </>
@@ -184,7 +206,7 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
         {state.players.map((player) => (
           <li
             key={player.user_id}
-            className={`game__seat ${player.is_eliminated ? 'game__seat--out' : ''} ${player.is_host ? 'game__seat--host' : ''}`}
+            className={`game__seat ${player.is_eliminated ? 'game__seat--out' : ''} ${player.is_host ? 'game__seat--host' : ''} ${ended && state.game.winner_user_id === player.user_id ? 'game__seat--winner' : ''}`}
           >
             <span className="game__seat-avatar" aria-hidden="true">
               {(player.display_name ?? 'A').slice(0, 1).toUpperCase()}
@@ -195,6 +217,9 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
             {!player.is_eliminated && !player.is_host && (
               <span className="game__seat-pts">{player.points} pts</span>
             )}
+            {ended && state.game.winner_user_id === player.user_id && (
+              <span className="game__crown">👑</span>
+            )}
           </li>
         ))}
       </ul>
@@ -203,7 +228,7 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
         <div className="game__over" role="status">
           <p className="game__over-title">game over.</p>
           <p className="game__over-winner">
-            {winPlayer ? `${winPlayer.display_name ?? 'someone'} takes it.` : 'nobody left standing.'}
+            {winner ? `${winner.display_name ?? 'someone'} has won.` : 'nobody left standing.'}
           </p>
           <button type="button" className="btn dash__btn" onClick={onLobbyLeft}>back to lobbies</button>
         </div>

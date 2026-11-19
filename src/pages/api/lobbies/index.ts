@@ -30,23 +30,25 @@ export const POST = apiRoute(async ({ request, userId }) =>
     } catch {
       return json({ error: 'Invalid JSON.' }, 400);
     }
-    const name = typeof (body as { name?: unknown })?.name === 'string'
+    const lobbyName = typeof (body as { name?: unknown })?.name === 'string'
       ? (body as { name: string }).name.trim().slice(0, 64)
       : '';
-    if (!name) return json({ error: 'Give your lobby a name.' }, 400);
-    if (name.length < 2) return json({ error: 'Name must be at least 2 characters.' }, 400);
+    if (!lobbyName) return json({ error: 'Give your lobby a name.' }, 400);
+    if (lobbyName.length < 2) return json({ error: 'Name must be at least 2 characters.' }, 400);
+    const displayName = typeof (body as { displayName?: unknown })?.displayName === 'string'
+      ? (body as { displayName: string }).displayName.trim().slice(0, 32)
+      : '';
 
     await ensureAppUser(client, userId);
     const created = await client.query(
-      `insert into public.lobbies (host_user_id, name)
-       values ($1, $2)
+      `insert into public.lobbies (host_user_id, name) values ($1, $2)
        returning id, name, max_players, status, created_at`,
-      [userId, name],
+      [userId, lobbyName],
     );
     await client.query(
-      `insert into public.lobby_seats (lobby_id, user_id) values ($1, $2)
-       on conflict do nothing`,
-      [created.rows[0].id, userId],
+      `insert into public.lobby_seats (lobby_id, user_id, display_name)
+       values ($1, $2, $3) on conflict do nothing`,
+      [created.rows[0].id, userId, displayName || null],
     );
     return json({ lobby: created.rows[0] }, 201);
   }),

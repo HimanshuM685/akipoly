@@ -1750,6 +1750,70 @@ svg {
   animation: spin 900ms linear infinite;
 }
 
+/* Name modal — shown before joining/creating a lobby */
+.name-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  background: rgba(23, 23, 23, 0.55);
+  padding: var(--space-6);
+}
+
+.name-modal__panel {
+  width: min(480px, 100%);
+  background: var(--color-white);
+  border: var(--border-width) solid var(--color-ink);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-float);
+  padding: var(--space-8) var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.name-modal__title {
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+}
+
+.name-modal__copy {
+  font-size: 0.98rem;
+  line-height: 1.55;
+  color: rgba(23, 23, 23, 0.82);
+}
+
+.name-modal__actions {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.name-modal__cancel {
+  background: var(--color-paper);
+}
+
+.name-modal__confirm {
+  flex: 1;
+}
+
+.game__lock {
+  display: block;
+  width: min(480px, 100%);
+  margin-inline: auto;
+}
+
+.game__seat--winner {
+  background: var(--color-primary);
+  box-shadow: 4px 4px 0 var(--color-ink);
+}
+
+.game__crown {
+  margin-left: auto;
+  font-size: 1.4rem;
+}
+
 /* ------------------------------------------------------------------ */
 /*  Waterwave page transition                                          */
 /* ------------------------------------------------------------------ */

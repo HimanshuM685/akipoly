@@ -62,10 +62,15 @@ export const POST = apiRoute(async ({ params, userId }) =>
 
     await ensureAppUser(client, userId);
     const seats = await client.query(
-      'select count(*)::int as n from public.lobby_seats where lobby_id = $1',
+      `select count(*)::int as n,
+              count(*) filter (where display_name is null) as unnamed
+         from public.lobby_seats where lobby_id = $1`,
       [lobbyId],
     );
     if (seats.rows[0].n < 2) throw new HttpError(409, 'need at least 2 players (1 host + 1 voter)');
+    if (seats.rows[0].unnamed > 0) {
+      throw new HttpError(409, 'everyone needs a display name before the game starts');
+    }
 
     const game = await client.query(
       `insert into public.games (lobby_id) values ($1) returning id`,
