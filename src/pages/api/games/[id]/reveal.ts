@@ -1,5 +1,5 @@
 import { apiRoute, json } from '../../../../lib/server/helpers';
-import { withClient } from '../../../../lib/server/db';
+import { withClient, HttpError } from '../../../../lib/server/db';
 import { ensureAppUser } from '../../../../lib/server/users';
 import { revealRandomness } from '../../../../lib/server/game';
 
@@ -37,6 +37,7 @@ export const POST = apiRoute(async ({ params, userId, request }) => {
       return json(result, 200);
     });
   } catch (err: unknown) {
+    if (err instanceof HttpError) throw err;
     console.error('[reveal] unexpected error:', err);
     return json({ error: 'Internal server error.' }, 500);
   }
