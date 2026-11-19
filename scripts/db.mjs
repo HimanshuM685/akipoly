@@ -53,6 +53,7 @@ try {
       console.log('--- running:', statement.slice(0, 140).replace(/\s+/g, ' '));
       const result = await client.query(statement);
       console.log('ok:', result.rowCount, 'row(s)');
+      if (result.rows?.length) console.log(JSON.stringify(result.rows, null, 2));
     }
   }
 } catch (err) {

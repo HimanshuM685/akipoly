@@ -37,6 +37,12 @@ DATABASE_URL=postgresql://neondb_owner:<password>@<pooler-endpoint>/neondb?sslmo
 can override the endpoint (e.g. pointing a fork elsewhere). Without any setup,
 the function returns 503 with a friendly message instead of crashing the page.
 
+Local note: if your ISP refuses to resolve `*.neon.tech` (DNS `Query refused`),
+local dev can target the pooler **IP** with `DATABASE_TLS_SERVERNAME` set to the
+pooler hostname (certificate is still validated). On Vercel set `DATABASE_URL`
+to the normal hostname URL and skip the `DATABASE_TLS_SERVERNAME` override —
+that file (`.env`) is never committed either way.
+
 ## /dashboard (Privy auth, Arc Testnet)
 
 `/dashboard` is a React island (Astro `@astrojs/react`, `client:only="react"`)
@@ -47,7 +53,7 @@ wallet; a Privy-embedded wallet is created automatically on first sign in
 page shows the wallet address (copy), live USDC balance read straight from the
 Arc RPC, the Arc explorer link, and sign out.
 
-Required env var (copy `.env.example` to `.env`, which is git-ignored):
+Required env vars (copy `.env.example` to `.env`, which is git-ignored):
 
 ```sh
 PUBLIC_PRIVY_APP_ID=cmwn8o8ul00cg0gjwj5ly4uex   # your app id — public by design

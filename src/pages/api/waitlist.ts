@@ -1,11 +1,14 @@
 /**
  * POST /api/waitlist — capture an email into the Neon `waitlist` table.
  *
- * Server-side only. The database connection string lives in the server-side
- * `DATABASE_URL` env var (set it in the Vercel project settings) and never
- * reaches the client. Deployed as a Vercel serverless function.
+ * Server-side only. The connection string lives in the server-side
+ * `DATABASE_URL` env var (set it in the Vercel project settings and in your
+ * local `.env`) and never reaches the client. Deployed as a Vercel serverless
+ * function. Uses node-postgres so it works through DNS-filtered networks too
+ * (locally, `.env` carries the pooler IP; on Vercel, the hostname).
  */
 import type { APIRoute } from 'astro';
+import pg from 'pg';
 
 export const prerender = false;
 
@@ -42,10 +45,22 @@ export const POST: APIRoute = async ({ request }) => {
     return json({ error: 'Waitlist is not configured yet. Try again soon.' }, 503);
   }
 
+  // Optional override for networks whose DNS refuses the Neon hostname:
+  // dial the pooler IP while validating the real cert via SNI.
+  const servername = process.env.DATABASE_TLS_SERVERNAME;
+
+  const client = new pg.Client({
+    connectionString: databaseUrl,
+    ssl: servername ? { rejectUnauthorized: true, servername } : true,
+    connectionTimeoutMillis: 5000,
+  });
+
   try {
-    const { neon } = await import('@neondatabase/serverless');
-    const sql = neon(databaseUrl);
-    await sql`insert into public.waitlist (email, source) values (${cleanEmail}, ${cleanSource})`;
+    await client.connect();
+    await client.query(
+      'insert into public.waitlist (email, source) values ($1, $2)',
+      [cleanEmail, cleanSource],
+    );
     return json({ ok: true }, 200);
   } catch (err: unknown) {
     const code = (err as { code?: string })?.code;
@@ -55,6 +70,8 @@ export const POST: APIRoute = async ({ request }) => {
     }
     console.error('[waitlist] insert failed:', err);
     return json({ error: 'Something went wrong on our side. Try again in a minute.' }, 500);
+  } finally {
+    await client.end().catch(() => undefined);
   }
 };
 
