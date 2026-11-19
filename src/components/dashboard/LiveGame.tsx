@@ -48,12 +48,8 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
   const [intent, setIntent] = useState<'higher' | 'lower' | null>(null);
   const [betAmount, setBetAmount] = useState('');
   const [spinning, setSpinning] = useState(false);
-  const [committing, setCommitting] = useState(false);
-  const [revealing, setRevealing] = useState(false);
   const [respawing, setRespawing] = useState(false);
   const [claiming, setClaiming] = useState(false);
-  const [seed, setSeed] = useState('');
-  const [commitment, setCommitment] = useState('');
   const [clock, setClock] = useState(30);
 
   // Derived values — declared BEFORE useEffect calls that reference them
@@ -80,11 +76,6 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
     return () => window.clearInterval(poll);
   }, [load]);
 
-  // Reset commitment when round changes so cross-round contamination doesn't occur
-  useEffect(() => {
-    setCommitment('');
-  }, [round?.id]);
-
   useEffect(() => {
     const t = window.setInterval(() => setClock((s) => Math.max(0, s - 1)), 1000);
     return () => window.clearInterval(t);
@@ -108,41 +99,6 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
       setError((err as Error).message);
     } finally {
       setSpinning(false);
-    }
-  };
-
-  const commitRandomness = async () => {
-    if (!round) return;
-    setCommitting(true);
-    try {
-      const c = hashSeedLocal(seed);
-      setCommitment(c);
-      await apiFetch(`/api/games/${gameId}/commit`, {
-        method: 'POST',
-        body: JSON.stringify({ round_id: round.id, commitment: c }),
-      });
-      await load();
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setCommitting(false);
-    }
-  };
-
-  const revealRandomness = async () => {
-    if (!round || !seed) return;
-    setRevealing(true);
-    try {
-      await apiFetch(`/api/games/${gameId}/reveal`, {
-        method: 'POST',
-        body: JSON.stringify({ round_id: round.id, seed }),
-      });
-      setSeed('');
-      await load();
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setRevealing(false);
     }
   };
 
@@ -196,7 +152,7 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
   const claim = async () => {
     setClaiming(true);
     try {
-      const res = await apiFetch(`/api/games/${gameId}/claim`, { method: 'POST' });
+      await apiFetch(`/api/games/${gameId}/claim`, { method: 'POST' });
       await load();
       setError(null);
     } catch (err) {
@@ -205,16 +161,6 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
       setClaiming(false);
     }
   };
-
-  // Simple local hash for commitment UI (server does real verification)
-  function hashSeedLocal(input: string): string {
-    let hash = 0;
-    for (let i = 0; i < input.length; i++) {
-      hash = ((hash << 5) - hash + input.charCodeAt(i)) | 0;
-    }
-    const hex = (hash >>> 0).toString(16).padStart(8, '0');
-    return '0x' + hex.repeat(8).slice(0, 64);
-  }
 
   if (error && !state) {
     return (
@@ -250,58 +196,18 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
       )}
 
       {!ended && round?.status === 'awaiting_spin' && (
-        <>
-          {isHost ? (
-            <>
-              <p className="game__hint">commit randomness seed before spinning</p>
-              <div className="game__commit">
-                <input
-                  type="text"
-                  placeholder="seed phrase (any text)"
-                  value={seed}
-                  onChange={(e) => setSeed(e.target.value)}
-                  aria-label="randomness seed"
-                />
-                <button
-                  type="button"
-                  className="btn dash__btn"
-                  onClick={commitRandomness}
-                  disabled={committing || !seed}
-                >
-                  {committing ? 'committing…' : 'commit seed'}
-                </button>
-              </div>
-              {commitment && (
-                <p className="game__hint">commitment: {commitment.slice(0, 16)}…</p>
-              )}
-              {commitment && !round.ball && (
-                <>
-                  <p className="game__hint">reveal to generate the ball</p>
-                  <button
-                    type="button"
-                    className="btn dash__btn"
-                    onClick={revealRandomness}
-                    disabled={revealing || !seed}
-                  >
-                    {revealing ? 'revealing…' : 'reveal seed'}
-                  </button>
-                </>
-              )}
-              {round.ball && (
-                <button
-                  type="button"
-                  className="btn btn--lg game__spin"
-                  onClick={spin}
-                  disabled={spinning}
-                >
-                  {spinning ? 'spinning…' : 'spin the ball'}
-                </button>
-              )}
-            </>
-          ) : (
-            <p className="game__hint">waiting for the host to commit and spin…</p>
-          )}
-        </>
+        isHost ? (
+          <button
+            type="button"
+            className="btn btn--lg game__spin"
+            onClick={spin}
+            disabled={spinning}
+          >
+            {spinning ? 'spinning…' : 'spin the ball'}
+          </button>
+        ) : (
+          <p className="game__hint">waiting for the host to spin the ball…</p>
+        )
       )}
 
       {!ended && round?.status === 'voting' && (
