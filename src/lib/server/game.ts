@@ -347,6 +347,7 @@ export async function settleRound(
   // Game over only when the round actually produced eliminations and at most
   // one non-host voter survives it. Round 1 never ends the game by itself.
   const gameOver = round.round_number >= 2 && survivorsNow.length <= 1;
+  if (gameOver) {
     // Game over — winner is the survivor (or the last eliminated).
     const winner = survivorsNow[0]?.user_id ?? (eliminatedThisRound.length > 0 ? eliminatedThisRound[eliminatedThisRound.length - 1] : null);
     await client.query(
