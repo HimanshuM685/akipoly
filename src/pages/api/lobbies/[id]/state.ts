@@ -19,7 +19,7 @@ export const GET = apiRoute(async ({ params, userId }) =>
 
     await ensureAppUser(client, userId);
     const seats = await client.query(
-      `select s.user_id, u.display_name, u.wallet_address, s.joined_at
+      `select s.user_id, coalesce(s.display_name, u.display_name) as display_name, u.wallet_address, s.joined_at
          from public.lobby_seats s
          join public.app_users u on u.privy_user_id = s.user_id
         where s.lobby_id = $1

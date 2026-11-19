@@ -24,7 +24,7 @@ export const POST = apiRoute(async ({ params, userId, request }) =>
     const l = lobby.rows[0];
     if (l.status !== 'waiting') throw new HttpError(409, 'game already started');
 
-    await ensureAppUser(client, userId);
+    await ensureAppUser(client, userId, undefined, displayName || null);
     const count = await client.query(
       'select count(*)::int as n from public.lobby_seats where lobby_id = $1',
       [lobbyId],

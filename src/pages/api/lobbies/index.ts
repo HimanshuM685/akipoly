@@ -39,7 +39,7 @@ export const POST = apiRoute(async ({ request, userId }) =>
       ? (body as { displayName: string }).displayName.trim().slice(0, 32)
       : '';
 
-    await ensureAppUser(client, userId);
+    await ensureAppUser(client, userId, undefined, displayName || null);
     const created = await client.query(
       `insert into public.lobbies (host_user_id, name) values ($1, $2)
        returning id, name, max_players, status, created_at`,
