@@ -356,9 +356,7 @@ export async function settleRound(
   const survivorsNow = active.filter((s) => !eliminatedThisRound.includes(s.user_id));
   const gameOver = round.round_number >= 2 && survivorsNow.length <= 1;
   if (gameOver) {
-    const winner =
-      survivorsNow[0]?.user_id ??
-      (eliminatedThisRound.length > 0 ? eliminatedThisRound[eliminatedThisRound.length - 1] : null);
+    const winner = survivorsNow[0]?.user_id ?? null;
     await client.query(
       `update public.games set winner_user_id = $1, ended_at = now() where id = $2`,
       [winner, gameId],
