@@ -89,10 +89,11 @@ export function hashSeed(seed: string): string {
   // Simple deterministic hash for commit-reveal. In production this would
   // be keccak256 via viem/ethers; here we use a stable offchain-compatible
   // digest so the operator can compute it offchain and submit onchain.
-  const buf = Buffer.from(seed, 'utf8');
+  // Uses the same algorithm as the frontend hashSeedLocal so commitments
+  // computed in the browser match server-side verification.
   let hash = 0;
-  for (let i = 0; i < buf.length; i++) {
-    hash = (hash * 31 + buf[i]) | 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = ((hash << 5) - hash + seed.charCodeAt(i)) | 0;
   }
   // Produce a hex string of 64 chars (simulating bytes32) for compatibility.
   const hex = (hash >>> 0).toString(16).padStart(8, '0');

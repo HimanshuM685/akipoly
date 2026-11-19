@@ -6,3 +6,5 @@ dist/
 .impeccable/review/
 .env
 .vercel/
+.vercel
+.env*

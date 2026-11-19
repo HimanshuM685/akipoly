@@ -40,7 +40,7 @@ export async function withClient<T>(fn: (client: pg.Client) => Promise<T>): Prom
   const client = new pg.Client({
     connectionString,
     ssl: servername ? { rejectUnauthorized: true, servername } : true,
-    connectionTimeoutMillis: 5000,
+    connectionTimeoutMillis: 10000,
   });
   await client.connect();
   try {
@@ -48,6 +48,25 @@ export async function withClient<T>(fn: (client: pg.Client) => Promise<T>): Prom
   } finally {
     await client.end().catch(() => undefined);
   }
+}
+
+export async function withClientRetry<T>(
+  fn: (client: pg.Client) => Promise<T>,
+  maxRetries: number = 3,
+): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await withClient(fn);
+    } catch (err) {
+      lastError = err;
+      if (attempt < maxRetries - 1) {
+        // Wait briefly before retrying
+        await new Promise((resolve) => setTimeout(resolve, 100 * (attempt + 1)));
+      }
+    }
+  }
+  throw lastError;
 }
 
 export class HttpError extends Error {
