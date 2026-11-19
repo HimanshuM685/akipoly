@@ -170,7 +170,7 @@ export default function Dashboard() {
             createOnLogin: 'users-without-wallets',
           },
         },
-        loginMethods: ['email', 'google', 'twitter', 'wallet'],
+        loginMethods: ['email', 'google'],
         defaultChain: arcTestnet,
         supportedChains: [arcTestnet],
       }}
