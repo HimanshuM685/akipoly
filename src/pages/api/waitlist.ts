@@ -9,11 +9,27 @@
  */
 import type { APIRoute } from 'astro';
 import pg from 'pg';
+import { readFileSync } from 'node:fs';
 
 export const prerender = false;
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const MAX_BODY_BYTES = 2048;
+
+/** Read .env file directly as a fallback when import.meta.env / process.env
+   don't have the value (Astro dev server quirks, shell env overrides, etc.). */
+function readEnvVar(key: string): string | undefined {
+  try {
+    const envContent = readFileSync(new URL('../../.env', import.meta.url), 'utf8');
+    const line = envContent.split('\n').find((l) => {
+      const trimmed = l.trim();
+      return trimmed.startsWith(`${key}=`) && !trimmed.startsWith('#');
+    });
+    return line?.split('=').slice(1).join('=').trim().replace(/^"|"$|^'|'$/g, '');
+  } catch {
+    return undefined;
+  }
+}
 
 export const POST: APIRoute = async ({ request }) => {
   // Size guard before parsing.
@@ -41,7 +57,11 @@ export const POST: APIRoute = async ({ request }) => {
 
   // Astro exposes .env through import.meta.env (its dev server does not copy
   // it into process.env); Vercel functions also have it on process.env.
-  const databaseUrl = process.env.DATABASE_URL ?? import.meta.env.DATABASE_URL;
+  // Prefer .env via import.meta.env, then direct .env file read, then process.env.
+  const databaseUrl =
+    import.meta.env.DATABASE_URL ??
+    readEnvVar('DATABASE_URL') ??
+    process.env.DATABASE_URL;
   if (!databaseUrl) {
     console.error('[waitlist] DATABASE_URL is not configured');
     return json({ error: 'Waitlist is not configured yet. Try again soon.' }, 503);
@@ -49,7 +69,10 @@ export const POST: APIRoute = async ({ request }) => {
 
   // Optional override for networks whose DNS refuses the Neon hostname:
   // dial the pooler IP while validating the real cert via SNI.
-  const servername = process.env.DATABASE_TLS_SERVERNAME ?? import.meta.env.DATABASE_TLS_SERVERNAME;
+  const servername =
+    import.meta.env.DATABASE_TLS_SERVERNAME ??
+    readEnvVar('DATABASE_TLS_SERVERNAME') ??
+    process.env.DATABASE_TLS_SERVERNAME;
 
   const client = new pg.Client({
     connectionString: databaseUrl,
