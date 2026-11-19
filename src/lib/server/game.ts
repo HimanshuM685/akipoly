@@ -284,11 +284,6 @@ export async function settleRound(
   );
   const votes = new Map(votesRes.rows.map((r) => [r.user_id, r.vote]));
 
-  const stillIn = seats.filter((s) => {
-    // already out?
-    return true;
-  });
-
   // Who is still in?
   const eliminatedRes = await client.query(
     `select user_id from public.game_results where game_id = $1 and eliminated_round is not null`,
@@ -346,7 +341,7 @@ export async function settleRound(
   const survivorsNow = active.filter((s) => !eliminatedThisRound.includes(s.user_id));
   if (survivorsNow.length <= 1 || round.round_number >= 32) {
     // Game over — winner is the survivor (or the last eliminated).
-    const winner = survivorsNow[0]?.user_id ?? eliminatedThisRound[eliminatedThisRound.length - 1] ?? null;
+    const winner = survivorsNow[0]?.user_id ?? (eliminatedThisRound.length > 0 ? eliminatedThisRound[eliminatedThisRound.length - 1] : null);
     await client.query(
       `update public.games set winner_user_id = $1, ended_at = now() where id = $2`,
       [winner, gameId],
@@ -371,6 +366,21 @@ export async function settleRound(
       await client.query(
         `update public.game_results set placement = $1 where game_id = $2 and user_id = $3`,
         [place++, gameId, row.user_id],
+      );
+    }
+
+    // Dealer account never voted and was never eliminated — record them as well
+    // so career shows the game for the host too.
+    const allSeats = await client.query(
+      `select user_id from public.lobby_seats where lobby_id = $1`,
+      [g.lobby_id],
+    );
+    for (const seat of allSeats.rows) {
+      await client.query(
+        `insert into public.game_results (game_id, user_id, placement, points)
+         values ($1, $2, null, 0)
+         on conflict (game_id, user_id) do nothing`,
+        [gameId, seat.user_id],
       );
     }
     // Players with no game_results row at all (host never voted, never out): count as last?
