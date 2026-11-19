@@ -153,27 +153,29 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
           ) : state.me.is_eliminated ? (
             <p className="game__hint game__hint--out">you are out — spectate till the end.</p>
           ) : (
-            <div className="game__vote">
-              <button
-                type="button"
-                disabled={votingChoice !== null}
-                className={`game__choice game__choice--higher ${votingChoice === 'higher' ? 'game__choice--active' : ''}`}
-                onClick={() => vote('higher')}
-                aria-pressed={votingChoice === 'higher'}
-              >
-                higher
-              </button>
-              <button
-                type="button"
-                disabled={votingChoice !== null}
-                className={`game__choice game__choice--lower ${votingChoice === 'lower' ? 'game__choice--active' : ''}`}
-                onClick={() => vote('lower')}
-                aria-pressed={votingChoice === 'lower'}
-              >
-                lower
-              </button>
-            </div>
-            {votingChoice && <p className="game__locked">locked in: {votingChoice}</p>}
+            <>
+              <div className="game__vote">
+                <button
+                  type="button"
+                  disabled={votingChoice !== null}
+                  className={`game__choice game__choice--higher ${votingChoice === 'higher' ? 'game__choice--active' : ''}`}
+                  onClick={() => vote('higher')}
+                  aria-pressed={votingChoice === 'higher'}
+                >
+                  higher
+                </button>
+                <button
+                  type="button"
+                  disabled={votingChoice !== null}
+                  className={`game__choice game__choice--lower ${votingChoice === 'lower' ? 'game__choice--active' : ''}`}
+                  onClick={() => vote('lower')}
+                  aria-pressed={votingChoice === 'lower'}
+                >
+                  lower
+                </button>
+              </div>
+              {votingChoice && <p className="game__locked">locked in: {votingChoice}</p>}
+            </>
           )}
         </>
       )}
