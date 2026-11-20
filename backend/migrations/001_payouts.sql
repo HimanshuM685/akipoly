@@ -14,3 +14,6 @@ CREATE TABLE IF NOT EXISTS public.payouts (
 CREATE INDEX IF NOT EXISTS idx_payouts_game_id ON public.payouts(game_id);
 CREATE INDEX IF NOT EXISTS idx_payouts_user_id ON public.payouts(user_id);
 CREATE INDEX IF NOT EXISTS idx_payouts_status ON public.payouts(status);
+
+ALTER TABLE public.app_users ADD COLUMN IF NOT EXISTS balance BIGINT DEFAULT 0;
+CREATE INDEX IF NOT EXISTS idx_app_users_balance ON public.app_users(balance);

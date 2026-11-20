@@ -308,6 +308,17 @@ export async function placeBet(client, gameId, roundId, userId, direction, amoun
   );
   if (existing.rowCount) throw new GameError(409, 'you already placed a bet this round');
 
+  const userRes = await client.query(
+    `select balance from public.app_users where privy_user_id = $1`,
+    [userId],
+  );
+  const balance = parseInt(userRes.rows[0]?.balance ?? '0', 10);
+  if (balance < betAmount) throw new GameError(400, 'insufficient balance');
+  await client.query(
+    `update public.app_users set balance = balance - $1 where privy_user_id = $2`,
+    [betAmount, userId],
+  );
+
   await client.query(
     `insert into public.bets (game_id, round_id, user_id, direction, amount, settled, claimable)
      values ($1, $2, $3, $4, $5, false, $5)`,
@@ -505,6 +516,7 @@ export async function settleRound(client, gameId, force) {
   const eliminatedThisRound = [];
   const winners = [];
   const refundDue = [];
+  const pendingPayouts = [];
 
   for (const s of active) {
     const vote = votes.get(s.user_id);
@@ -537,7 +549,6 @@ export async function settleRound(client, gameId, force) {
         winners.push({ user_id: s.user_id, bet: bet.amount, payout });
       } else {
         eliminatedThisRound.push(s.user_id);
-        refundDue.push({ user_id: s.user_id, amount: bet.amount });
         await client.query(
           `update public.bets set settled = true, claimable = 0
            where game_id = $1 and user_id = $2 and round_id = $3`,
@@ -549,6 +560,10 @@ export async function settleRound(client, gameId, force) {
 
   for (const w of winners) {
     await client.query(
+      `update public.app_users set balance = balance + $1 where privy_user_id = $2`,
+      [w.payout, w.user_id],
+    );
+    await client.query(
       `update public.bets set settled = true, claimable = $1
        where game_id = $2 and user_id = $3 and round_id = $4`,
       [w.payout, gameId, w.user_id, round.id],
@@ -559,9 +574,20 @@ export async function settleRound(client, gameId, force) {
        on conflict (game_id, user_id) do update set points = public.game_results.points + $3`,
       [gameId, w.user_id, w.payout],
     );
+    const payoutRes = await client.query(
+      `insert into public.payouts (game_id, round_id, user_id, amount_usdc, status)
+       values ($1, $2, $3, $4, 'pending')
+       returning id`,
+      [gameId, round.id, w.user_id, w.payout],
+    );
+    pendingPayouts.push({ payoutId: payoutRes.rows[0].id, userId: w.user_id, amount: w.payout });
   }
 
   for (const r of refundDue) {
+    await client.query(
+      `update public.app_users set balance = balance + $1 where privy_user_id = $2`,
+      [r.amount, r.user_id],
+    );
     await client.query(
       `update public.bets set settled = true, claimable = $1
        where game_id = $2 and user_id = $3 and round_id = $4`,
@@ -618,7 +644,7 @@ export async function settleRound(client, gameId, force) {
       `update public.lobbies set status = 'finished', updated_at = now() where id = $1`,
       [g.lobby_id],
     );
-    return { settled: true, game_over: true, winner, ball: round.ball, winners, refunds: refundDue.length };
+    return { settled: true, game_over: true, winner, ball: round.ball, winners, refunds: refundDue.length, pendingPayouts };
   }
 
   await client.query(
@@ -629,5 +655,5 @@ export async function settleRound(client, gameId, force) {
     `update public.lobbies set current_round = $1, updated_at = now() where id = $2`,
     [round.round_number + 1, g.lobby_id],
   );
-  return { settled: true, game_over: false, ball: round.ball, next_round: round.round_number + 1, winners, refunds: refundDue.length };
+  return { settled: true, game_over: false, ball: round.ball, next_round: round.round_number + 1, winners, refunds: refundDue.length, pendingPayouts };
 }

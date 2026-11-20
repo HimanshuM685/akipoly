@@ -15,10 +15,44 @@ import { initPayout, transferUsdc } from './payout.js';
 const rooms = new Map(); // gameId -> Set of WebSocket clients
 const userSockets = new Map(); // userId -> WebSocket
 const socketUserId = new Map(); // WebSocket -> userId
+const socketQueues = new Map(); // WebSocket -> array of messages sent before auth
+const messageCache = new Map(); // `${userId}:${message_id}` -> expiry timestamp
+const MESSAGE_TTL_MS = 5 * 60 * 1000;
 
 let dbInitialized = false;
 let authInitialized = false;
 let payoutInitialized = false;
+
+function isDuplicate(userId, messageId) {
+  const key = `${userId}:${messageId}`;
+  const now = Date.now();
+  const expiry = messageCache.get(key);
+  if (expiry != null && now < expiry) return true;
+  messageCache.delete(key);
+  return false;
+}
+
+function markSeen(userId, messageId) {
+  messageCache.set(`${userId}:${messageId}`, Date.now() + MESSAGE_TTL_MS);
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, expiry] of messageCache) {
+    if (now >= expiry) messageCache.delete(key);
+  }
+}, 60000);
+
+// Verify a user is seated in the lobby of a game before allowing game actions.
+async function assertSeated(gameId, userId) {
+  const res = await query(
+    `select 1 from public.lobby_seats s
+      join public.games g on g.lobby_id = s.lobby_id
+     where g.id = $1 and s.user_id = $2`,
+    [gameId, userId],
+  );
+  if (res.rowCount === 0) throw new Error('Not seated in this game');
+}
 
 export function initWs(server, config) {
   const { databaseUrl, privyAppId, arcRpcUrl, usdcContract, opPrivateKey, opAddress } = config;
@@ -62,34 +96,38 @@ export function initWs(server, config) {
     let currentUserId = null;
     let currentGameId = null;
 
-    ws.on('message', async (raw) => {
-      let msg;
-      try {
-        msg = JSON.parse(raw.toString());
-      } catch {
-        ws.send(JSON.stringify({ type: 'error', message: 'Invalid JSON' }));
-        return;
-      }
+    let pingTimer = null;
+    let missedPongs = 0;
 
-      if (msg.type === 'auth') {
-        try {
-          const { userId } = await verifyPrivyToken(msg.token);
-          authenticated = true;
-          currentUserId = userId;
-          userSockets.set(userId, ws);
-          socketUserId.set(ws, userId);
-          ws.send(JSON.stringify({ type: 'auth_ok', userId }));
-          console.log(`[ws] user authenticated: ${userId}`);
-        } catch (err) {
-          ws.send(JSON.stringify({ type: 'error', message: 'Authentication failed' }));
-          ws.close();
+    function startHeartbeat() {
+      if (pingTimer) clearInterval(pingTimer);
+      pingTimer = setInterval(() => {
+        missedPongs += 1;
+        if (missedPongs >= 3) {
+          try { ws.close(); } catch {}
+          return;
         }
-        return;
-      }
+        if (ws.readyState === WebSocket.OPEN) ws.ping();
+      }, 30000);
+    }
 
-      if (!authenticated) {
-        ws.send(JSON.stringify({ type: 'error', message: 'Not authenticated' }));
-        return;
+    function stopHeartbeat() {
+      if (pingTimer) { clearInterval(pingTimer); pingTimer = null; }
+      missedPongs = 0;
+    }
+
+    ws.on('pong', () => {
+      missedPongs = 0;
+    });
+
+    startHeartbeat();
+
+    async function handleMessage(msg) {
+      // Message deduplication by (userId, message_id) with a 5-minute TTL.
+      const messageId = msg.message_id;
+      if (messageId) {
+        if (isDuplicate(currentUserId, messageId)) return;
+        markSeen(currentUserId, messageId);
       }
 
       try {
@@ -115,6 +153,7 @@ export function initWs(server, config) {
 
           case 'spin': {
             if (!currentGameId) break;
+            await assertSeated(currentGameId, currentUserId);
             const result = await withTransaction(async (client) => {
               return await spin(client, currentGameId, currentUserId);
             });
@@ -125,6 +164,7 @@ export function initWs(server, config) {
 
           case 'vote': {
             if (!currentGameId || !msg.choice) break;
+            await assertSeated(currentGameId, currentUserId);
             const result = await withTransaction(async (client) => {
               return await vote(client, currentGameId, currentUserId, msg.choice);
             });
@@ -135,6 +175,7 @@ export function initWs(server, config) {
 
           case 'bet': {
             if (!currentGameId || !msg.roundId || !msg.direction || !msg.amount) break;
+            await assertSeated(currentGameId, currentUserId);
             const result = await withTransaction(async (client) => {
               return await placeBet(
                 client,
@@ -152,32 +193,38 @@ export function initWs(server, config) {
 
           case 'settle': {
             if (!currentGameId) break;
+            await assertSeated(currentGameId, currentUserId);
             const result = await withTransaction(async (client) => {
               return await settleRound(client, currentGameId, msg.force || false);
             });
             ws.send(JSON.stringify({ type: 'settle_result', ...result }));
 
-            // Handle payouts if settled and payout module initialized
-            if (result.settled && result.winners && payoutInitialized) {
-              for (const w of result.winners) {
+            // Payout atomicity: settleRound inserts pending payouts.
+            // Confirm on success, mark failed for retry on transfer failure.
+            if (result.settled && result.pendingPayouts && payoutInitialized) {
+              for (const p of result.pendingPayouts) {
                 try {
-                  const payout = await transferUsdc(
-                    await getUserWalletAddress(w.user_id),
-                    w.payout / 1e6,
+                  const transfer = await transferUsdc(
+                    await getUserWalletAddress(p.userId),
+                    p.amount / 1e6,
                   );
                   await query(
-                    `insert into public.payouts (game_id, round_id, user_id, amount_usdc, tx_hash, status)
-                     values ($1, $2, $3, $4, $5, 'confirmed')`,
-                    [currentGameId, result.round_id || null, w.user_id, w.payout, payout.txHash],
+                    `update public.payouts set status = 'confirmed', tx_hash = $1, confirmed_at = now()
+                     where id = $2`,
+                    [transfer.txHash, p.payoutId],
                   );
                   ws.send(JSON.stringify({
                     type: 'payout',
-                    userId: w.user_id,
-                    amount: w.payout,
-                    txHash: payout.txHash,
+                    userId: p.userId,
+                    amount: p.amount,
+                    txHash: transfer.txHash,
                   }));
                 } catch (err) {
-                  console.error('[payout] failed for user', w.user_id, err.message);
+                  console.error('[payout] failed for user', p.userId, err.message);
+                  await query(
+                    `update public.payouts set status = 'failed' where id = $1`,
+                    [p.payoutId],
+                  );
                 }
               }
             }
@@ -212,9 +259,53 @@ export function initWs(server, config) {
         console.error('[ws] handler error:', err);
         ws.send(JSON.stringify({ type: 'error', message: err.message || 'Internal error' }));
       }
+    }
+
+    ws.on('message', async (raw) => {
+      let msg;
+      try {
+        msg = JSON.parse(raw.toString());
+      } catch {
+        ws.send(JSON.stringify({ type: 'error', message: 'Invalid JSON' }));
+        return;
+      }
+
+      if (msg.type === 'auth') {
+        try {
+          const { userId } = await verifyPrivyToken(msg.token);
+          authenticated = true;
+          currentUserId = userId;
+          userSockets.set(userId, ws);
+          socketUserId.set(ws, userId);
+          ws.send(JSON.stringify({ type: 'auth_ok', userId }));
+          console.log(`[ws] user authenticated: ${userId}`);
+          // Flush queued pre-auth messages in order
+          const queue = socketQueues.get(ws) ?? [];
+          socketQueues.delete(ws);
+          for (const queued of queue) {
+            await handleMessage(queued);
+          }
+        } catch (err) {
+          ws.send(JSON.stringify({ type: 'error', message: 'Authentication failed' }));
+          ws.close();
+        }
+        return;
+      }
+
+      if (!authenticated) {
+        // Queue messages sent before auth; reject unauthenticated game actions.
+        const queue = socketQueues.get(ws) ?? [];
+        queue.push(msg);
+        socketQueues.set(ws, queue);
+        ws.send(JSON.stringify({ type: 'error', message: 'Not authenticated' }));
+        return;
+      }
+
+      await handleMessage(msg);
     });
 
     ws.on('close', () => {
+      stopHeartbeat();
       if (currentUserId) {
         userSockets.delete(currentUserId);
       }
@@ -228,6 +319,7 @@ export function initWs(server, config) {
     });
 
     ws.on('error', (err) => {
+      stopHeartbeat();
       console.error('[ws] socket error:', err);
     });
   });

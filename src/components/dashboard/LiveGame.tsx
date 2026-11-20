@@ -71,7 +71,11 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
   const [spinning, setSpinning] = useState(false);
   const [respawing, setRespawing] = useState(false);
   const [claiming, setClaiming] = useState(false);
+  const [betPending, setBetPending] = useState(false);
+  const [authenticated, setAuthenticated] = useState(false);
+  const [connecting, setConnecting] = useState(false);
   const [toasts, setToasts] = useState<Array<{ id: number; message: string }>>([]);
+  const sendQueue: Array<{ message: object; resolve: () => void }> = [];
   const prevBallRef = useRef<number | null>(null);
   const previousStateRef = useRef<GameState | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
@@ -103,10 +107,24 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
 
   const send = (message: object) => {
     const ws = wsRef.current;
-    if (ws && ws.readyState === WebSocket.OPEN) {
+    if (ws && ws.readyState === WebSocket.OPEN && authenticated) {
       ws.send(JSON.stringify(message));
     } else {
-      console.warn('[ws] not connected, cannot send:', message);
+      return new Promise<void>((resolve) => {
+        sendQueue.push({ message, resolve });
+      });
+    }
+    return Promise.resolve();
+  };
+
+  const flushQueue = () => {
+    while (sendQueue.length) {
+      const { message, resolve } = sendQueue.shift()!;
+      const ws = wsRef.current;
+      if (ws && ws.readyState === WebSocket.OPEN && authenticated) {
+        ws.send(JSON.stringify(message));
+      }
+      resolve();
     }
   };
 
@@ -116,7 +134,7 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
 
     ws.onopen = () => {
       console.log('[ws] connected');
-      send({ type: 'join_game', gameId });
+      setConnecting(false);
       getIdentityToken()
         .then((token) => {
           if (token) {
@@ -135,6 +153,9 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
         switch (data.type) {
           case 'auth_ok':
             console.log('[ws] authenticated');
+            setAuthenticated(true);
+            flushQueue();
+            send({ type: 'join_game', gameId });
             break;
           case 'state':
             setState(data.snapshot);
@@ -165,7 +186,7 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
             addToast(`You won ${data.amount} USDC! Tx: ${data.txHash}`);
             break;
           case 'error':
-            setError(data.message);
+            addToast(data.message);
             break;
           default:
             console.log('[ws] unhandled:', data.type, data);
@@ -178,6 +199,8 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
     ws.onclose = () => {
       console.log('[ws] disconnected, reconnecting in 3s...');
       wsRef.current = null;
+      setAuthenticated(false);
+      setConnecting(true);
       setTimeout(connect, 3000);
     };
 
@@ -198,9 +221,9 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
   const spin = async () => {
     setSpinning(true);
     try {
-      send({ type: 'spin', gameId });
+      await send({ type: 'spin', gameId });
     } catch (err) {
-      setError((err as Error).message);
+      addToast(`Spin failed: ${(err as Error).message}`);
     } finally {
       setSpinning(false);
     }
@@ -212,8 +235,9 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
     const amt = parseInt(betAmount, 10);
     if (isNaN(amt) || amt <= 0) return;
 
+    setBetPending(true);
     try {
-      send({
+      await send({
         type: 'bet',
         gameId,
         round_id: round.id,
@@ -222,25 +246,27 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
       });
       setBetAmount('');
     } catch (err) {
-      setError((err as Error).message);
+      addToast(`Bet failed: ${(err as Error).message}`);
+    } finally {
+      setBetPending(false);
     }
   };
 
   const lockIn = async () => {
     if (!intent || lockedIn) return;
     try {
-      send({ type: 'vote', gameId, choice: intent });
+      await send({ type: 'vote', gameId, choice: intent });
     } catch (err) {
-      setError((err as Error).message);
+      addToast(`Vote failed: ${(err as Error).message}`);
     }
   };
 
   const respin = async () => {
     setRespawing(true);
     try {
-      send({ type: 'settle', gameId, force: true });
+      await send({ type: 'settle', gameId, force: true });
     } catch (err) {
-      setError((err as Error).message);
+      addToast(`Respin failed: ${(err as Error).message}`);
     } finally {
       setRespawing(false);
     }
@@ -249,9 +275,9 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
   const claim = async () => {
     setClaiming(true);
     try {
-      send({ type: 'claim', gameId });
+      await send({ type: 'claim', gameId });
     } catch (err) {
-      setError((err as Error).message);
+      addToast(`Claim failed: ${(err as Error).message}`);
     } finally {
       setClaiming(false);
     }
@@ -269,11 +295,16 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
   }
 
   if (!state) {
-    return <p className="room__loading">waking the table…</p>;
+    return <p className="room__loading">{connecting ? 'Connecting…' : 'waking the table…'}</p>;
   }
 
   return (
-    <div className={`game ${resultFlash ? `game--flash-${resultFlash}` : ''}`}>
+    <div
+      className={`game ${resultFlash ? `game--flash-${resultFlash}` : ''} ${connecting ? 'connecting' : ''}`}
+    >
+      {connecting && (
+        <p className="room__loading" role="status">Reconnecting…</p>
+      )}
       {toasts.length > 0 && (
         <div className="toasts">
           {toasts.map((t) => (
@@ -382,10 +413,10 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
                 <button
                   type="button"
                   className="btn btn--lg game__lock"
-                  disabled={!intent || !betAmount || parseInt(betAmount, 10) <= 0}
+                  disabled={!intent || !betAmount || parseInt(betAmount, 10) <= 0 || betPending}
                   onClick={placeBet}
                 >
-                  place bet
+                  {betPending ? 'placing…' : 'place bet'}
                 </button>
               </div>
             </>

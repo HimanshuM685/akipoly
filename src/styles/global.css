@@ -1715,6 +1715,11 @@ svg {
   }
 }
 
+.connecting {
+  pointer-events: none;
+  opacity: 0.5;
+}
+
 .game__clock,
 .game__hint {
   text-align: center;
