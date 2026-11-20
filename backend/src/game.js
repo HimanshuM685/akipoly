@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 
 export const ROUND_SECONDS = 30;
 export const MAX_PLAYERS = 10;
+export const INITIAL_BALANCE = 1000000; // 1.000000 USDC equivalent in 6dp
 
 // Pool ball values: 0-16 (17 possible values)
 export const BALL_MIN = 0;
@@ -62,7 +63,6 @@ export class GameError extends Error {
 
 /**
  * Snapshot the current game state for a viewer.
- * Mirrors the original game.ts snapshotGame.
  */
 export async function snapshotGame(client, gameId, meUserId) {
   const gameRes = await client.query(
@@ -102,7 +102,7 @@ export async function snapshotGame(client, gameId, meUserId) {
 
   const votesRes = roundRow
     ? await client.query(
-        `select user_id, side from public.round_votes where round_id = $1`,
+        `select user_id, side from public.bets where round_id = $1 and settled = false`,
         [roundRow.id],
       )
     : { rows: [] };
@@ -111,7 +111,7 @@ export async function snapshotGame(client, gameId, meUserId) {
   const betsRes = roundRow
     ? await client.query(
         `select user_id, side, amount from public.bets where round_id = $1 and settled = false`,
-        [roundRow.id],
+        [round.id],
       )
     : { rows: [] };
   const bets = new Map(betsRes.rows.map((r) => [r.user_id, { side: r.side, amount: parseInt(r.amount, 10) }]));
@@ -135,7 +135,7 @@ export async function snapshotGame(client, gameId, meUserId) {
       is_eliminated: result?.eliminated_round != null,
       eliminated_round: result?.eliminated_round ?? null,
       points: result?.points ?? 0,
-      vote_locked: votes.has(seat.user_id),
+      bet_locked: votes.has(seat.user_id),
       my_bet: bet ? { side: bet.side, amount: bet.amount } : null,
     };
   });
@@ -180,7 +180,6 @@ export async function snapshotGame(client, gameId, meUserId) {
 
 /**
  * Spin the ball (host only).
- * Sets the current round's ball and status to 'voting'.
  */
 export async function spin(client, gameId, userId) {
   const gameRes = await client.query(
@@ -220,11 +219,6 @@ export async function spin(client, gameId, userId) {
 }
 
 /**
- * Place a bet on higher or lower for the current round.
- * Combines vote + bet into a single action per the reference design.
- * Deducts the bet amount from the player's balance immediately.
- */
-/**
  * Create first round for a game (awaiting_spin).
  */
 export async function createFirstRound(client, gameId) {
@@ -237,14 +231,10 @@ export async function createFirstRound(client, gameId) {
 }
 
 /**
- * Vote is now part of placeBet. Kept as a wrapper for compatibility.
+ * Place a bet on higher or lower for the current round.
+ * Combines vote + bet into a single action.
+ * Deducts the bet amount from player balance immediately.
  */
-export async function vote(client, gameId, userId, choice) {
-  // vote is now part of placeBet; this is a no-op wrapper
-  // The actual bet is placed via placeBet
-  return { ok: true };
-}
-
 export async function placeBet(client, gameId, roundId, userId, side, amount) {
   const betAmount = parseInt(amount, 10);
   if (isNaN(betAmount) || betAmount <= 0) {
@@ -270,21 +260,25 @@ export async function placeBet(client, gameId, roundId, userId, side, amount) {
   const r = roundRes.rows[0];
   if (r.status !== 'voting') throw new GameError(409, 'betting is closed for this round');
 
-  // Verify user is seated in this lobby
   const seatRes = await client.query(
     `select 1 from public.lobby_seats where lobby_id = (select lobby_id from public.games where id = $1) and user_id = $2`,
     [gameId, userId],
   );
   if (seatRes.rowCount === 0) throw new GameError(403, 'you are not seated in this game');
 
-  // Check player hasn't already bet this round
+  const eliminated = await client.query(
+    `select 1 from public.game_results where game_id = $1 and user_id = $2 and eliminated_round is not null`,
+    [gameId, userId],
+  );
+  if (eliminated.rowCount) throw new GameError(409, 'you are out — you cannot bet');
+
   const existing = await client.query(
     `select 1 from public.bets where round_id = $1 and user_id = $2`,
     [roundId, userId],
   );
   if (existing.rowCount) throw new GameError(409, 'you already placed a bet this round');
 
-  // Deduct bet amount from player balance
+  // Check balance
   const balanceRes = await client.query(
     `select balance from public.app_users where privy_user_id = $1`,
     [userId],
@@ -295,7 +289,7 @@ export async function placeBet(client, gameId, roundId, userId, side, amount) {
     throw new GameError(400, 'insufficient balance');
   }
 
-  // Deduct bet amount
+  // Deduct bet amount from balance
   await client.query(
     `update public.app_users set balance = balance - $1 where privy_user_id = $2`,
     [betAmount, userId],
@@ -489,17 +483,11 @@ export async function settleRound(client, gameId, force) {
     prevBall = prev.rows[0]?.ball ?? null;
   }
 
-  const votesRes = await client.query(
-    `select user_id, side from public.bets where round_id = $1 and settled = false`,
-    [round.id],
-  );
-  const votes = new Map(votesRes.rows.map((r) => [r.user_id, r.side]));
-
   const betsRes = await client.query(
-    `select user_id, direction, amount from public.bets where round_id = $1 and settled = false`,
+    `select user_id, side, amount from public.bets where round_id = $1 and settled = false`,
     [round.id],
   );
-  const bets = new Map(betsRes.rows.map((r) => [r.user_id, { side: r.direction, amount: parseInt(r.amount, 10) }]));
+  const bets = new Map(betsRes.rows.map((r) => [r.user_id, { side: r.side, amount: parseInt(r.amount, 10) }]));
 
   const highPoolRes = await client.query(
     `select coalesce(high_pool, 0) as high_pool from public.rounds where id = $1`,
@@ -549,7 +537,7 @@ export async function settleRound(client, gameId, force) {
       continue;
     }
 
-    // Determine if vote was correct
+    // Determine if bet was correct
     let correct = true;
     if (prevBall !== null) {
       if (round.ball > prevBall) correct = bet.side === 'higher';
@@ -582,15 +570,7 @@ export async function settleRound(client, gameId, force) {
       const payout = winningSideBets > 0
         ? Math.floor((bet.amount * totalPool) / winningSideBets)
         : bet.amount;
-      // Create pending payout record
-      const payoutRes = await client.query(
-        `insert into public.payouts (game_id, round_id, user_id, amount_usdc, status)
-         values ($1, $2, $3, $4, 'pending')
-         returning id`,
-        [gameId, round.id, s.user_id, payout],
-      );
-      const payoutId = payoutRes.rows[0].id;
-      winners.push({ user_id: s.user_id, bet: bet.amount, payout, payoutId });
+      winners.push({ user_id: s.user_id, bet: bet.amount, payout });
       await client.query(
         `update public.bets set settled = true, claimable = $1
          where game_id = $2 and user_id = $3 and round_id = $4`,
@@ -600,15 +580,8 @@ export async function settleRound(client, gameId, force) {
         `update public.app_users set balance = balance + $1 where privy_user_id = $2`,
         [payout, s.user_id],
       );
-      await client.query(
-        `insert into public.game_results (game_id, user_id, points)
-         values ($1, $2, $3)
-         on conflict (game_id, user_id) do update set points = public.game_results.points + $3`,
-        [gameId, s.user_id, payout],
-      );
     } else {
       // Bet on losing side — survive but lose stake
-      // Bet already deducted at placement time, mark as settled with 0 claimable
       await client.query(
         `update public.bets set settled = true, claimable = 0
          where game_id = $2 and user_id = $3 and round_id = $4`,

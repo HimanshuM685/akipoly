@@ -62,7 +62,7 @@ const ballColors: Record<number, string> = {
 };
 
 export default function LiveGame({ gameId, onLobbyLeft }: Props) {
-  const wsUrl = 'wss://ws.akipoly.xyz';
+  const wsUrl = import.meta.env.PUBLIC_WS_URL ?? 'wss://ws.akipoly.xyz';
   const { getIdentityToken } = usePrivy();
   const [state, setState] = useState<GameState | null>(null);
   const [error, setError] = useState<string | null>(null);

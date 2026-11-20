@@ -4,7 +4,6 @@ import { initDb, withTransaction, query } from './db.js';
 import {
   snapshotGame,
   spin,
-  vote,
   placeBet,
   settleRound,
   claimWinnings,
@@ -162,19 +161,8 @@ export function initWs(server, config) {
             break;
           }
 
-          case 'vote': {
-            if (!currentGameId || !msg.choice) break;
-            await assertSeated(currentGameId, currentUserId);
-            const result = await withTransaction(async (client) => {
-              return await vote(client, currentGameId, currentUserId, msg.choice);
-            });
-            ws.send(JSON.stringify({ type: 'vote_result', ...result }));
-            await broadcastState(currentGameId, currentUserId);
-            break;
-          }
-
           case 'bet': {
-            if (!currentGameId || !msg.roundId || !msg.direction || !msg.amount) break;
+            if (!currentGameId || !msg.roundId || !msg.side || !msg.amount) break;
             await assertSeated(currentGameId, currentUserId);
             const result = await withTransaction(async (client) => {
               return await placeBet(
@@ -182,7 +170,7 @@ export function initWs(server, config) {
                 currentGameId,
                 msg.roundId,
                 currentUserId,
-                msg.direction,
+                msg.side,
                 msg.amount,
               );
             });
