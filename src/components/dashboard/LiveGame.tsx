@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useApiFetch } from '../../lib/client-api';
+import { usePrivy } from '@privy-io/react-auth';
 
 interface PlayerRow {
   user_id: string;
@@ -62,7 +62,8 @@ const ballColors: Record<number, string> = {
 };
 
 export default function LiveGame({ gameId, onLobbyLeft }: Props) {
-  const apiFetch = useApiFetch();
+  const wsUrl = import.meta.env.PUBLIC_WS_URL ?? 'ws://localhost:8081';
+  const { getIdentityToken } = usePrivy();
   const [state, setState] = useState<GameState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [intent, setIntent] = useState<'higher' | 'lower' | null>(null);
@@ -73,6 +74,7 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
   const [toasts, setToasts] = useState<Array<{ id: number; message: string }>>([]);
   const prevBallRef = useRef<number | null>(null);
   const previousStateRef = useRef<GameState | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
   const [resultFlash, setResultFlash] = useState<'win' | 'loss' | 'push' | null>(null);
 
   // Derived values — declared BEFORE useEffect calls that reference them
@@ -84,86 +86,6 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
   const totalPool = round ? round.high_pool + round.low_pool : 0;
   const clockFromServer = round?.seconds_left ?? 30;
 
-  const load = useCallback(async () => {
-    try {
-      const next = await apiFetch<GameState>(`/api/games/${gameId}/state`);
-
-      // Detect newly eliminated players and show toasts
-      if (previousStateRef.current) {
-        const prevEliminated = new Set(
-          previousStateRef.current.players.filter((p) => p.is_eliminated).map((p) => p.user_id),
-        );
-        const newlyEliminated = next.players.filter(
-          (p) => p.is_eliminated && !prevEliminated.has(p.user_id),
-        );
-
-        for (const p of newlyEliminated) {
-          const prevPlayer = previousStateRef.current.players.find((x) => x.user_id === p.user_id);
-          const name = p.display_name ?? 'A player';
-          let reason = "didn't vote in time";
-          if (prevPlayer?.vote_locked) {
-            reason = 'guessed wrong';
-          }
-          const toastId = Date.now() + Math.random();
-          setToasts((prev) => [...prev, { id: toastId, message: `${name} was eliminated — ${reason}.` }]);
-          setTimeout(() => {
-            setToasts((prev) => prev.filter((t) => t.id !== toastId));
-          }, 5000);
-        }
-      }
-
-      setState(next);
-      previousStateRef.current = next;
-
-      // Auto-settle when timer expires (round is in voting and time is up)
-      if (next.round?.status === 'voting' && next.round?.seconds_left! <= 0) {
-        await apiFetch(`/api/games/${gameId}/settle`, { method: 'POST' });
-      }
-    } catch (err) {
-      setError((err as Error).message);
-    }
-  }, [apiFetch, gameId]);
-
-  useEffect(() => {
-    load();
-    let interval: number;
-
-    if (!state) {
-      interval = window.setInterval(load, 1200);
-    } else if (round?.status === 'awaiting_spin') {
-      // Host hasn't spun yet — poll less often
-      interval = window.setInterval(load, 3000);
-    } else if (round?.status === 'voting') {
-      // Active voting — poll more often, aligned to server seconds_left
-      interval = window.setInterval(load, 1000);
-    } else {
-      // Settled or game over — stop polling
-      return;
-    }
-
-    return () => window.clearInterval(interval);
-  }, [load, state, round?.status]);
-
-  useEffect(() => {
-    setIntent(state?.me.vote === 'higher' || state?.me.vote === 'lower' ? state.me.vote : null);
-  }, [state?.me.vote]);
-
-  useEffect(() => {
-    if (round?.ball != null && prevBallRef.current !== round.ball) {
-      prevBallRef.current = round.ball;
-    }
-  }, [round?.ball]);
-
-  useEffect(() => {
-    if (round?.ball != null && prevBallRef.current !== null && prevBallRef.current !== round.ball) {
-      const ball = round.ball;
-      const prev = prevBallRef.current;
-      if (ball > prev) setResultFlash('win');
-      else if (ball < prev) setResultFlash('loss');
-      else setResultFlash('push');
-    }
-  }, [round?.ball]);
-
   const justSpun = round?.ball != null && prevBallRef.current !== null && prevBallRef.current !== round.ball;
 
   const lockedIn = state?.me.vote === 'higher' || state?.me.vote === 'lower';
@@ -171,11 +93,114 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
     ? state.players.find((p) => p.user_id === state.game.winner_user_id)
     : null;
 
+  const addToast = (message: string) => {
+    const id = Date.now() + Math.random();
+    setToasts((prev) => [...prev, { id, message }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 5000);
+  };
+
+  const send = (message: object) => {
+    const ws = wsRef.current;
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify(message));
+    } else {
+      console.warn('[ws] not connected, cannot send:', message);
+    }
+  };
+
+  const connect = useCallback(async () => {
+    const ws = new WebSocket(wsUrl);
+    wsRef.current = ws;
+
+    ws.onopen = () => {
+      console.log('[ws] connected');
+      // Get Privy identity token for auth
+      getIdentityToken()
+        .then((token) => {
+          if (token) {
+            ws.send(JSON.stringify({ type: 'auth', token }));
+          }
+          ws.send(JSON.stringify({ type: 'join_game', gameId }));
+        })
+        .catch((err) => {
+          console.error('[ws] auth token error:', err);
+          ws.send(JSON.stringify({ type: 'join_game', gameId }));
+        });
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+
+        switch (data.type) {
+          case 'auth_ok':
+            console.log('[ws] authenticated');
+            break;
+          case 'state':
+            setState(data.snapshot);
+            previousStateRef.current = data.snapshot;
+            // Handle elimination toasts
+            if (data.snapshot && previousStateRef.current) {
+              const prevEliminated = new Set(
+                previousStateRef.current.players.filter((p) => p.is_eliminated).map((p) => p.user_id),
+              );
+              const newlyEliminated = data.snapshot.players.filter(
+                (p) => p.is_eliminated && !prevEliminated.has(p.user_id),
+              );
+              for (const p of newlyEliminated) {
+                const prevPlayer = previousStateRef.current.players.find((x) => x.user_id === p.user_id);
+                const name = p.display_name ?? 'A player';
+                let reason = "didn't vote in time";
+                if (prevPlayer?.vote_locked) {
+                  reason = 'guessed wrong';
+                }
+                addToast(`${name} was eliminated — ${reason}.`);
+              }
+            }
+            break;
+          case 'toast':
+            addToast(data.message);
+            break;
+          case 'payout':
+            addToast(`You won ${data.amount} USDC! Tx: ${data.txHash}`);
+            break;
+          case 'error':
+            setError(data.message);
+            break;
+          default:
+            console.log('[ws] unhandled:', data.type, data);
+        }
+      } catch (err) {
+        console.error('[ws] parse error:', err);
+      }
+    };
+
+    ws.onclose = () => {
+      console.log('[ws] disconnected, reconnecting in 3s...');
+      wsRef.current = null;
+      setTimeout(connect, 3000);
+    };
+
+    ws.onerror = (err) => {
+      console.error('[ws] error:', err);
+    };
+  }, [gameId, wsUrl, getIdentityToken]);
+
+  useEffect(() => {
+    connect();
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
+  }, [connect]);
+
   const spin = async () => {
     setSpinning(true);
     try {
-      await apiFetch(`/api/games/${gameId}/spin`, { method: 'POST' });
-      await load();
+      send({ type: 'spin', gameId });
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -190,17 +215,14 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
     if (isNaN(amt) || amt <= 0) return;
 
     try {
-      await apiFetch(`/api/games/${gameId}/bet`, {
-        method: 'POST',
-        body: JSON.stringify({ round_id: round.id, direction: intent, amount: betAmount }),
-      });
-      // Also lock in the vote — bet without vote doesn't count
-      await apiFetch(`/api/games/${gameId}/vote`, {
-        method: 'POST',
-        body: JSON.stringify({ vote: intent }),
+      send({
+        type: 'bet',
+        gameId,
+        round_id: round.id,
+        direction: intent,
+        amount: betAmount,
       });
       setBetAmount('');
-      await load();
     } catch (err) {
       setError((err as Error).message);
     }
@@ -209,11 +231,7 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
   const lockIn = async () => {
     if (!intent || lockedIn) return;
     try {
-      await apiFetch(`/api/games/${gameId}/vote`, {
-        method: 'POST',
-        body: JSON.stringify({ vote: intent }),
-      });
-      await load();
+      send({ type: 'vote', gameId, choice: intent });
     } catch (err) {
       setError((err as Error).message);
     }
@@ -222,11 +240,7 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
   const respin = async () => {
     setRespawing(true);
     try {
-      await apiFetch(`/api/games/${gameId}/settle`, {
-        method: 'POST',
-        body: JSON.stringify({ force: true }),
-      });
-      await load();
+      send({ type: 'settle', gameId, force: true });
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -237,9 +251,7 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
   const claim = async () => {
     setClaiming(true);
     try {
-      await apiFetch(`/api/games/${gameId}/claim`, { method: 'POST' });
-      await load();
-      setError(null);
+      send({ type: 'claim', gameId });
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -251,7 +263,9 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
     return (
       <div className="room__error">
         {error}
-        <button type="button" className="btn dash__btn" onClick={onLobbyLeft}>back to lobbies</button>
+        <button type="button" className="btn dash__btn" onClick={onLobbyLeft}>
+          back to lobbies
+        </button>
       </div>
     );
   }
@@ -436,7 +450,9 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
               </button>
             </>
           )}
-          <button type="button" className="btn dash__btn" onClick={onLobbyLeft}>back to lobbies</button>
+          <button type="button" className="btn dash__btn" onClick={onLobbyLeft}>
+            back to lobbies
+          </button>
         </div>
       )}
 

@@ -1,0 +1,20 @@
+{
+  "name": "akipoly-game-backend",
+  "version": "1.0.0",
+  "description": "Akipoly minigame WebSocket backend with Arc Testnet USDC settlement",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "migrate": "node -e \"require('pg'); console.log('Run migration manually against Neon')\""
+  },
+  "dependencies": {
+    "dotenv": "^16.6.1",
+    "jose": "^6.2.18",
+    "pg": "^8.23.1",
+    "uuid": "^9.0.0",
+    "viem": "^2.0.0",
+    "ws": "^8.23.0"
+  }
+}
