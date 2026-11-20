@@ -39,6 +39,8 @@ const year = new Date().getFullYear();
     </script>
   </head>
   <body>
+    <!-- Three.js monopoly theme background -->
+    <canvas class="docs-field" aria-hidden="true"></canvas>
     <a class="skip-link" href="#main">Skip to content</a>
     <main id="main" class="docs">
       <div class="docs__top">
@@ -142,5 +144,96 @@ const year = new Date().getFullYear();
       </aside>
     </main>
     <Waterwave />
+    <script>
+      import * as THREE from 'three';
+
+      const canvas = document.querySelector('.docs-field');
+      if (!canvas) throw new Error('DocsField: canvas not found');
+
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(60, canvas.clientWidth / canvas.clientHeight, 0.1, 100);
+      camera.position.z = 12;
+
+      const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+      renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+      const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+      scene.add(ambient);
+      const dir = new THREE.DirectionalLight(0xffffff, 0.8);
+      dir.position.set(5, 10, 7);
+      scene.add(dir);
+
+      const group = new THREE.Group();
+      scene.add(group);
+
+      const colors = [0xfff500, 0x9db7fb, 0xff6b4a, 0xb8f28b, 0xff80b5, 0xa78bfa];
+      const diceGeo = new THREE.BoxGeometry(0.7, 0.7, 0.7);
+      const diceMat = (color) => new THREE.MeshStandardMaterial({ color, flatShading: true });
+
+      const dice = [];
+      const count = reduced ? 3 : 8;
+
+      for (let i = 0; i < count; i++) {
+        const mesh = new THREE.Mesh(diceGeo, diceMat(colors[i % colors.length]));
+        mesh.position.set(
+          (Math.random() - 0.5) * 20,
+          (Math.random() - 0.5) * 12,
+          (Math.random() - 0.5) * 5
+        );
+        mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
+        mesh.userData = {
+          drift: new THREE.Vector3((Math.random() - 0.5) * 0.015, (Math.random() - 0.5) * 0.015, (Math.random() - 0.5) * 0.015),
+          spin: new THREE.Vector3((Math.random() - 0.5) * 0.01, (Math.random() - 0.5) * 0.01, (Math.random() - 0.5) * 0.01),
+          floatOffset: Math.random() * Math.PI * 2,
+        };
+        group.add(mesh);
+        dice.push(mesh);
+      }
+
+      const edgesGeo = new THREE.EdgesGeometry(diceGeo);
+      const edgesMat = new THREE.LineBasicMaterial({ color: 0x171717, linewidth: 2 });
+
+      function raf() {
+        if (!reduced) {
+          const t = performance.now() * 0.001;
+          dice.forEach((m) => {
+            m.position.x += m.userData.drift.x;
+            m.position.y += m.userData.drift.y;
+            m.position.z += Math.sin(t + m.userData.floatOffset) * 0.008;
+            m.rotation.x += m.userData.spin.x;
+            m.rotation.y += m.userData.spin.y;
+            m.rotation.z += m.userData.spin.z;
+            if (m.position.x > 11) m.position.x = -11;
+            if (m.position.x < -11) m.position.x = 11;
+            if (m.position.y > 7) m.position.y = -7;
+            if (m.position.y < -7) m.position.y = 7;
+          });
+        }
+        renderer.render(scene, camera);
+        requestAnimationFrame(raf);
+      }
+      raf();
+
+      const onResize = () => {
+        camera.aspect = canvas.clientWidth / canvas.clientHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+      };
+      window.addEventListener('resize', onResize);
+    </script>
+    <style>
+      .docs-field {
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        pointer-events: none;
+        width: 100vw;
+        height: 100vh;
+        display: block;
+      }
+    </style>
   </body>
 </html>

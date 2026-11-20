@@ -33,7 +33,7 @@ Visitors arrive from social posts, communities and word of mouth. Most decide in
 - Copy must be human and must not use Monopoly/Hasbro trademarks — except inside the user-pinned opening line "we create monopoly on arc", used verbatim and lowercase.
 - `design.md` (user-attached, at `E:\editshit\design.md`) is binding for every visual decision: palette, typography roles, 3px ink borders, hard offset shadows, motion restraint, accessibility rules.
 - Technical: one page, one screen, semantic HTML, accessible form controls, responsive, respects `prefers-reduced-motion`, minimal dependencies.
-- The wordmark/favicon artwork is user-supplied and authoritative (`The AKI Chapter.png`); favicons are derived via `scripts/build-icons.mjs`.
+- The wordmark/favicon artwork is user-supplied and authoritative (`The AKI Chapter.png`).
 
 ## Brand Commitments
 

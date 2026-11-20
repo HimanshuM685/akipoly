@@ -113,10 +113,10 @@ BL, violet BR), repositioned slightly at ≤640px, and the yellow marker behind 
 Present in the repo:
 
 - **index.astro** — the page: skip link, "?" explainer badge (top-right → `/docs`),
-  "dashboard" action chip directly below it (→ `/dashboard`, new tab), decorative
+  "play" action chip directly below it (→ `/play`, new tab), decorative
   sparkles, h1 > wordmark image (1 h1 only), tagline, `.page__form` (id `waitlist`), legal line,
   `WaitlistForm`, `CookieBanner`.
-- **dashboard.astro** (`/dashboard`) — Privy-gated seat on Arc Testnet. Static shell (back link,
+- **play.astro** (`/play`) — Privy-gated minigame seat on Arc Testnet. Static shell (back link,
   wordmark, sparkle, legal line) + a `Dashboard.tsx` React island (`client:only="react"`) wired
   to Privy (`PrivyProvider`, `embeddedWallets.ethereum.createOnLogin: 'users-without-wallets'`,
   `defaultChain: arcTestnet` from `viem/chains`). Logged out: "sign in to claim your seat." +
@@ -195,8 +195,6 @@ Re-render / re-check (policy-managed Windows: prefix the build with the WASI fal
 ```sh
 NAPI_RS_FORCE_WASI=true npm run build   # policy-managed Windows
 npm run build                            # ordinary machines → dist/
-node scripts/cdp-shot.mjs <url> <out.png> <w> <h>   # screenshot + overflow check
-node scripts/cdp-test.mjs                # waitlist valid/invalid paths via CDP
 ```
 
 Expected: clean build, no horizontal overflow, no console errors, waitlist error → success paths
@@ -210,6 +208,6 @@ work. Astro `^7.4.12`, static output.
 - **Placeholder legal line** — footer copyright entity not yet supplied; uses © year +
   not-affiliated notice. No social links exist on the one-screen page by design.
 - **Official artwork provenance** — master is `E:\editshit\The AKI Chapter.png`; all derived
-  rasters/SVG in `public/icons/` come from `scripts/build-icons.mjs`.
+  rasters/SVG in `public/icons/` were generated from it.
 - **npm audit** — high-severity advisories in build-time transitive deps (`picomatch` ReDoS); not
   shipped to browser; `--force` deliberately rejected (would downgrade Astro a major).

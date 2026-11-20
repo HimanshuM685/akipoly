@@ -43,9 +43,9 @@ pooler hostname (certificate is still validated). On Vercel set `DATABASE_URL`
 to the normal hostname URL and skip the `DATABASE_TLS_SERVERNAME` override —
 that file (`.env`) is never committed either way.
 
-## /dashboard (Privy auth, Arc Testnet)
+## /play (Privy auth, Arc Testnet)
 
-`/dashboard` is a React island (Astro `@astrojs/react`, `client:only="react"`)
+`/play` is a React island (Astro `@astrojs/react`, `client:only="react"`)
 gated by [Privy](https://docs.privy.io). Sign in with email/social/external
 wallet; a Privy-embedded wallet is created automatically on first sign in
 (`createOnLogin: 'users-without-wallets'`) on **Arc Testnet** (chain id
@@ -70,39 +70,21 @@ compromised and rotate it in the Privy dashboard.)
 ```
 src/pages/index.astro          the page — one screen, one action
 src/pages/docs.astro           /docs — the "what is this thing" explainer
-src/pages/dashboard.astro      /dashboard — Privy-gated Arc Testnet seat
+src/pages/play.astro           /play — Privy-gated Arc Testnet minigame seat
 src/pages/api/waitlist.ts      POST → insert into Neon `waitlist` (serverless)
-src/components/Dashboard.tsx    the /dashboard island (PrivyProvider, wallet, USDC balance)
+src/components/Dashboard.tsx    the /play island (PrivyProvider, wallet, USDC balance)
 src/components/WaitlistForm.astro  email form + success state + client script
 src/components/CookieBanner.astro  one-line cookie note (localStorage ack)
 src/components/Waterwave.astro     the rising-tide page transition between / and /docs
 src/styles/global.css          design tokens (from design.md) + all styles
 src/lib/waitlist.ts            waitlist client seam
 public/icons/                  generated icon set (see below)
-scripts/cdp-shot.mjs           dev-only: screenshot + overflow check via raw CDP
-scripts/cdp-test.mjs           dev-only: drives the waitlist form (valid/invalid)
-scripts/build-icons.mjs        dev-only: regenerate icons from the master logo
-scripts/cdp-test-wave.mjs      dev-only: waterwave / <-> /docs transition state machine
-scripts/db.mjs                 dev-only: direct Neon access (DNS-filtered networks)
-scripts/db-schema.mjs          dev-only: Neon schema probe via serverless driver
 ```
 
 All illustration is original (inline SVG sparkles; the logo artwork itself is
-the user-supplied master at `E:\editshit\The AKI Chapter.png`, processed by
-`scripts/build-icons.mjs`). Colours and spacing follow `design.md`; display
+the user-supplied master at `E:\editshit\The AKI Chapter.png`). Colours and spacing follow `design.md`; display
 type is **Chango** (the pinned Brick Sans is commercial and unavailable;
 Archivo Black was the earlier placeholder).
-
-## Logo & icons
-
-`scripts/build-icons.mjs` crops the wordmark, isolates the raccoon head, and
-emits `public/icons/` — favicon.svg (quantised pixel-art), favicon 16/32/48,
-apple-touch-icon, PWA icons 192/512, a maskable 512, and downscaled
-wordmark/head PNGs used by the page and favicons:
-
-```sh
-node scripts/build-icons.mjs "E:\editshit\The AKI Chapter.png"
-```
 
 ## Notes
 

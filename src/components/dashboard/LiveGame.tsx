@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useApiFetch } from '../../lib/client-api';
+import PoolBall from './PoolBall';
 
 interface PlayerRow {
   user_id: string;
@@ -51,6 +52,8 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
   const [respawing, setRespawing] = useState(false);
   const [claiming, setClaiming] = useState(false);
   const [clock, setClock] = useState(30);
+  const prevBallRef = useRef<number | null>(null);
+  const [resultFlash, setResultFlash] = useState<'win' | 'loss' | 'push' | null>(null);
 
   // Derived values — declared BEFORE useEffect calls that reference them
   const round = state?.round ?? null;
@@ -89,6 +92,23 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
   useEffect(() => {
     setIntent(state?.me.vote === 'higher' || state?.me.vote === 'lower' ? state.me.vote : null);
   }, [state?.me.vote]);
+
+  useEffect(() => {
+    if (round?.ball != null && prevBallRef.current !== round.ball) {
+      prevBallRef.current = round.ball;
+      setSpinTrigger((k) => k + 1);
+    }
+  }, [round?.ball]);
+
+  useEffect(() => {
+    if (state?.round?.status === 'settled') {
+      const ball = state.round.ball ?? 0;
+      const prev = prevBallRef.current ?? ball;
+      if (ball > prev) setResultFlash('win');
+      else if (ball < prev) setResultFlash('loss');
+      else setResultFlash('push');
+    }
+  }, [state?.round?.status]);
 
   const lockedIn = state?.me.vote === 'higher' || state?.me.vote === 'lower';
   const winner = ended && state?.game.winner_user_id
@@ -181,16 +201,14 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
   }
 
   return (
-    <div className="game">
+    <div className={`game ${resultFlash ? `game--flash-${resultFlash}` : ''}`}>
       <div className="game__header">
         <h2 className="dash__heading">{state.lobby.name}</h2>
         <span className="game__stat">round {round?.number ?? state.lobby.current_round}</span>
         <span className="game__stat">{playersLeft} standing</span>
       </div>
 
-      <div className="game__ball" aria-label="Current ball">
-        {round?.ball ?? '—'}
-      </div>
+      <PoolBall ball={round?.ball ?? null} spinning={spinning} />
 
       {round && (
         <div className="game__pools">
@@ -217,7 +235,7 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
 
       {!ended && round?.status === 'voting' && (
         <>
-          <p className="game__clock" aria-label="Seconds left to lock in">{clock}s</p>
+          <p className={`game__clock ${clock <= 5 && clock > 0 ? 'game__clock--urgent' : ''}`} aria-label="Seconds left to lock in">{clock}s</p>
           {isHost ? (
             <>
               <p className="game__hint">

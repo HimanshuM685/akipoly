@@ -822,7 +822,8 @@ svg {
 /*  Dashboard (/dashboard)                                             */
 /* ------------------------------------------------------------------ */
 
-.dash {
+.dash,
+.play {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
@@ -841,7 +842,8 @@ svg {
   margin-bottom: var(--space-10);
 }
 
-.dash__title {
+.dash__title,
+.play__title {
   width: min(760px, 100%);
   font-family: var(--font-body);
   font-weight: 700;
@@ -1602,6 +1604,50 @@ svg {
   line-height: 1;
   border: var(--border-width) solid var(--color-ink);
   box-shadow: var(--shadow-float);
+}
+
+/* Game feel — juice on the core loop */
+.game__clock--urgent {
+  animation: clockPulse 800ms ease-in-out infinite alternate;
+  color: #a33a2a;
+}
+
+@keyframes clockPulse {
+  from {
+    transform: scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: scale(1.15);
+    opacity: 0.6;
+  }
+}
+
+.game--flash-win {
+  animation: flashWin 500ms ease-in-out forwards;
+}
+
+.game--flash-loss {
+  animation: flashLoss 500ms ease-in-out forwards;
+}
+
+.game--flash-push {
+  animation: flashPush 500ms ease-in-out forwards;
+}
+
+@keyframes flashWin {
+  0% { outline: 8px solid var(--color-success); outline-offset: -8px; }
+  100% { outline: none; outline-offset: 0; }
+}
+
+@keyframes flashLoss {
+  0% { outline: 8px solid #a33a2a; outline-offset: -8px; }
+  100% { outline: none; outline-offset: 0; }
+}
+
+@keyframes flashPush {
+  0% { outline: 8px solid var(--color-special); outline-offset: -8px; }
+  100% { outline: none; outline-offset: 0; }
 }
 
 .game__clock,
