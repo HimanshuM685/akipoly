@@ -161,6 +161,8 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
             setAuthenticated(true);
             flushQueue();
             send({ type: 'join_game', gameId });
+            // Request current game state after joining
+            send({ type: 'get_state', gameId });
             break;
           case 'state':
             setState(data.snapshot);
