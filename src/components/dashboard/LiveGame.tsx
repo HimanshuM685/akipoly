@@ -132,15 +132,14 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
     ws.onopen = () => {
       console.log('[ws] connected');
       setConnecting(false);
-      // Send join_game and get_state immediately — these are read-only
-      // and don't require authentication
+      // Send join_game immediately — doesn't need auth
       ws.send(JSON.stringify({ type: 'join_game', gameId }));
-      ws.send(JSON.stringify({ type: 'get_state', gameId }));
-      // Auth separately — needed only for writing actions (vote, bet, spin)
+      // Get state AFTER auth — needs userId
       getIdentityToken()
         .then((token) => {
           if (token && ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({ type: 'auth', token }));
+            ws.send(JSON.stringify({ type: 'get_state', gameId }));
           } else if (!token) {
             console.error('[ws] No identity token from Privy');
             addToast('Authentication failed: could not get identity token');
