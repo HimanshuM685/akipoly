@@ -1,6 +1,0 @@
-[ws] Database initialized
-[ws] Auth initialized
-[ws] Payout module initialized
-[backend] Akipoly game server listening on port 8081
-[backend] WebSocket endpoint: ws://localhost:8081
-[backend] Health check: http://localhost:8081/health

@@ -116,17 +116,15 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
 
     ws.onopen = () => {
       console.log('[ws] connected');
-      // Get Privy identity token for auth
+      send({ type: 'join_game', gameId });
       getIdentityToken()
         .then((token) => {
           if (token) {
-            ws.send(JSON.stringify({ type: 'auth', token }));
+            send({ type: 'auth', token });
           }
-          ws.send(JSON.stringify({ type: 'join_game', gameId }));
         })
         .catch((err) => {
-          console.error('[ws] auth token error:', err);
-          ws.send(JSON.stringify({ type: 'join_game', gameId }));
+          console.error('[ws] auth token error:', err.message);
         });
     };
 
