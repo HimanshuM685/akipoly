@@ -1627,6 +1627,187 @@ svg {
   }
 }
 
+/* Rolling ball: reel cycles numbers (JS) while the ball tumbles (CSS),
+   then lands with a squash-and-pop at the server's reveal time. */
+.ballreel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.ballreel__label {
+  text-align: center;
+  font-weight: 700;
+  color: rgba(23, 23, 23, 0.78);
+  min-height: 1.5em;
+}
+
+.game__ball-num {
+  display: grid;
+  place-items: center;
+  width: 58%;
+  height: 58%;
+  border-radius: 50%;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  border: 2px solid var(--color-ink);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.62em;
+}
+
+.game__ball--rolling {
+  animation: ballRoll 420ms linear infinite;
+}
+
+.game__ball--landed {
+  animation: ballLand 520ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes ballRoll {
+  0% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-10px) rotate(90deg); }
+  50% { transform: translateY(0) rotate(180deg); }
+  75% { transform: translateY(-6px) rotate(270deg); }
+  100% { transform: translateY(0) rotate(360deg); }
+}
+
+@keyframes ballLand {
+  0% { transform: scale(1.12, 0.86); }
+  45% { transform: scale(0.94, 1.08); }
+  100% { transform: scale(1); }
+}
+
+.game__stat {
+  border: 2px solid var(--color-ink);
+  border-radius: var(--radius-badge);
+  background: var(--color-paper);
+  padding: 2px 10px;
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+.game__side {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-weight: 600;
+}
+
+.game__side input,
+.lobbies__input--amount {
+  width: 6.5em;
+  border: 2px solid var(--color-ink);
+  border-radius: var(--radius-input);
+  padding: 6px 10px;
+  font: inherit;
+  text-align: right;
+  background: var(--color-white);
+}
+
+.game__side-pools,
+.lobbies__hint {
+  text-align: center;
+  font-size: 0.85rem;
+  color: rgba(23, 23, 23, 0.65);
+}
+
+.game__history {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+.game__history-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 48px;
+  padding: 4px 8px;
+  border: 2px solid var(--color-ink);
+  border-radius: var(--radius-badge);
+  background: var(--color-paper);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.game__history-item small {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.game__history-item--higher { background: var(--color-success); }
+.game__history-item--lower { background: #ffb9aa; }
+.game__history-item--push,
+.game__history-item--void { background: var(--color-special); }
+
+.game__called {
+  margin-left: auto;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(23, 23, 23, 0.5);
+}
+
+.game__called--yes { color: var(--color-ink); }
+
+.game__fair {
+  width: 100%;
+  font-size: 0.8rem;
+  color: rgba(23, 23, 23, 0.7);
+}
+
+.game__fair code {
+  word-break: break-all;
+}
+
+.room__stakes {
+  display: flex;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.room__badge,
+.room__ready {
+  border: 2px solid var(--color-ink);
+  border-radius: var(--radius-badge);
+  font-size: 0.62rem;
+  padding: 2px 8px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: var(--color-paper);
+}
+
+.room__badge { background: var(--color-secondary); }
+.room__ready { margin-left: auto; opacity: 0.6; }
+.room__ready--yes { background: var(--color-success); opacity: 1; }
+
+.lobbies__buyin {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 600;
+}
+
+.lobbies__status {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: rgba(23, 23, 23, 0.6);
+}
+
+.toast--link {
+  pointer-events: auto;
+  text-decoration: none;
+}
+
 /* Centered button row for host actions during voting */
 .game__btn-row {
   display: flex;

@@ -1,11 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useExportWallet, usePrivy, useWallets } from '@privy-io/react-auth';
-import { createPublicClient, formatUnits, getAddress, http } from 'viem';
-import { arcTestnet } from 'viem/chains';
-
-const arcClient = createPublicClient({ chain: arcTestnet, transport: http() });
-const EXPLORER =
-  arcTestnet.blockExplorers?.default.url ?? 'https://explorer.testnet.arc.io';
+import { addressUrl, formatUsdc, network, readUsdcBalance } from '../../lib/arc';
 
 const shorten = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
 
@@ -27,16 +22,19 @@ export default function WalletPanel() {
     if (!address) return;
     let cancelled = false;
     setBalanceErr(false);
-    arcClient
-      .getBalance({ address: getAddress(address) })
-      .then((v) => {
-        if (!cancelled) setBalance(Number(formatUnits(v, 18)).toFixed(4));
-      })
-      .catch(() => {
-        if (!cancelled) setBalanceErr(true);
-      });
+    const load = () =>
+      readUsdcBalance(address)
+        .then((v) => {
+          if (!cancelled) setBalance(formatUsdc(v));
+        })
+        .catch(() => {
+          if (!cancelled) setBalanceErr(true);
+        });
+    load();
+    const timer = window.setInterval(load, 15_000);
     return () => {
       cancelled = true;
+      window.clearInterval(timer);
     };
   }, [address]);
 
@@ -76,7 +74,7 @@ export default function WalletPanel() {
         <div className="wallet-chip__menu" role="menu">
           <div className="wallet-chip__row">
             <span className="wallet-chip__label">wallet</span>
-            <span className="wallet-chip__tag">arc testnet</span>
+            <span className="wallet-chip__tag">{network.name.toLowerCase()}</span>
           </div>
           {!walletsReady ? (
             <p className="wallet-chip__skeleton">loading…</p>
@@ -98,12 +96,17 @@ export default function WalletPanel() {
               </div>
               <a
                 className="wallet-chip__link"
-                href={`${EXPLORER}/address/${address}`}
+                href={addressUrl(address)}
                 target="_blank"
                 rel="noopener noreferrer"
               >
                 view on arc explorer ↗
               </a>
+              {network.faucetUrl && (
+                <a className="wallet-chip__link" href={network.faucetUrl} target="_blank" rel="noopener noreferrer">
+                  get testnet usdc (circle faucet) ↗
+                </a>
+              )}
               <button type="button" className="wallet-chip__action" onClick={() => exportWallet({ address })}>
                 export private key
               </button>
