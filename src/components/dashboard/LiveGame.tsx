@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useApiFetch } from '../../lib/client-api';
-import PoolBall from './PoolBall';
 
 interface PlayerRow {
   user_id: string;
@@ -42,6 +41,26 @@ interface Props {
   onLobbyLeft: () => void;
 }
 
+// Pool ball colors (1–15, 0 = cue white) — matches the physical ball set
+const ballColors: Record<number, string> = {
+  1: '#FFD700',
+  2: '#0000FF',
+  3: '#FF0000',
+  4: '#800080',
+  5: '#FFA500',
+  6: '#008000',
+  7: '#800000',
+  8: '#000000',
+  9: '#FFD700',
+  10: '#0000FF',
+  11: '#FF0000',
+  12: '#800080',
+  13: '#FFA500',
+  14: '#008000',
+  15: '#800000',
+  0: '#FFFFFF',
+};
+
 export default function LiveGame({ gameId, onLobbyLeft }: Props) {
   const apiFetch = useApiFetch();
   const [state, setState] = useState<GameState | null>(null);
@@ -53,7 +72,6 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
   const [claiming, setClaiming] = useState(false);
   const prevBallRef = useRef<number | null>(null);
   const [resultFlash, setResultFlash] = useState<'win' | 'loss' | 'push' | null>(null);
-  const clockFromServer = round?.seconds_left ?? 30;
 
   // Derived values — declared BEFORE useEffect calls that reference them
   const round = state?.round ?? null;
@@ -62,6 +80,7 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
   const playersLeft = state?.players.filter((p) => !p.is_host && !p.is_eliminated).length ?? 0;
   const votesIn = state?.players.filter((p) => !p.is_host && p.vote_locked).length ?? 0;
   const totalPool = round ? round.high_pool + round.low_pool : 0;
+  const clockFromServer = round?.seconds_left ?? 30;
 
   const load = useCallback(async () => {
     try {
@@ -217,7 +236,17 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
         <span className="game__stat">{playersLeft} standing</span>
       </div>
 
-      <PoolBall ball={round?.ball ?? null} spinning={justSpun} />
+      {round?.ball != null && (
+        <div
+          className={`game__ball ${justSpun ? 'game__ball--spin' : ''}`}
+          style={{
+            backgroundColor: ballColors[round.ball] ?? '#171717',
+            color: round.ball === 8 ? '#FFFDF2' : '#171717',
+          }}
+        >
+          {round.ball}
+        </div>
+      )}
 
       {round && (
         <div className="game__pools">
@@ -246,7 +275,7 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
         <>
           <p className={`game__clock ${clockFromServer <= 5 && clockFromServer > 0 ? 'game__clock--urgent' : ''}`} aria-label="Seconds left to lock in">{clockFromServer}s</p>
           {isHost ? (
-            <>
+            <div className="game__btn-row">
               <p className="game__hint">
                 players voting… {votesIn}/{playersLeft} locked in
               </p>
@@ -258,7 +287,7 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
               >
                 {respawing ? 'respinning…' : 'respin the ball'}
               </button>
-            </>
+            </div>
           ) : state.me.is_eliminated ? (
             <p className="game__hint game__hint--out">you are out — spectate till the end.</p>
           ) : state.me.my_bet ? (
