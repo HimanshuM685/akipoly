@@ -1590,20 +1590,44 @@ svg {
   background: #ffb9aa;
 }
 
-.game__ball {
-  align-self: center;
-  display: grid;
-  place-items: center;
+/* Pool ball — Three.js canvas with ink outline and number overlay */
+.pool-ball-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: clamp(140px, 28vw, 220px);
-  aspect-ratio: 1;
+  height: clamp(140px, 28vw, 220px);
+  margin: var(--space-4) 0;
+}
+
+.pool-ball {
+  width: 100%;
+  height: 100%;
   border-radius: 50%;
-  background: var(--color-ink);
-  color: var(--color-primary);
-  font-family: var(--font-display);
-  font-size: clamp(3.5rem, 10vw, 6rem);
-  line-height: 1;
   border: var(--border-width) solid var(--color-ink);
   box-shadow: var(--shadow-float);
+  background: var(--color-ink);
+  display: block;
+}
+
+.pool-ball__number {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 8vw, 5.5rem);
+  line-height: 1;
+  color: var(--color-ink);
+  user-select: none;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* 8-ball uses paper color for contrast */
+.pool-ball__number[data-ball="8"] {
+  color: var(--color-paper);
 }
 
 /* Game feel — juice on the core loop */

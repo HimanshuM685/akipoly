@@ -106,25 +106,10 @@ export default function PoolBall({ ball, spinning, size = 140 }: Props) {
   }, [ball, spinning, setSize.w, setSize.h]);
 
   return (
-    <div
-      className="pool-ball-wrap"
-      style={{ width: size, height: size, position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-    >
-      <canvas className="pool-ball" ref={ref} style={{ width: size, height: size }} />
+    <div className="pool-ball-wrap">
+      <canvas className="pool-ball" ref={ref} />
       {ball != null && (
-        <span
-          className="pool-ball__number"
-          style={{
-            position: 'absolute',
-            fontFamily: 'Chango, Arial Black, sans-serif',
-            fontSize: size * 0.5,
-            lineHeight: 1,
-            color: ball === 8 ? '#fffdf2' : '#171717',
-            userSelect: 'none',
-          }}
-        >
-          {ball}
-        </span>
+        <span className="pool-ball__number" data-ball={ball}>{ball}</span>
       )}
     </div>
   );

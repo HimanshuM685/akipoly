@@ -51,9 +51,9 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
   const [spinning, setSpinning] = useState(false);
   const [respawing, setRespawing] = useState(false);
   const [claiming, setClaiming] = useState(false);
-  const [clock, setClock] = useState(30);
   const prevBallRef = useRef<number | null>(null);
   const [resultFlash, setResultFlash] = useState<'win' | 'loss' | 'push' | null>(null);
+  const clockFromServer = round?.seconds_left ?? 30;
 
   // Derived values — declared BEFORE useEffect calls that reference them
   const round = state?.round ?? null;
@@ -67,7 +67,6 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
     try {
       const next = await apiFetch<GameState>(`/api/games/${gameId}/state`);
       setState(next);
-      setClock(next.round?.seconds_left ?? 30);
 
       // Auto-settle when timer expires (round is in voting and time is up)
       if (next.round?.status === 'voting' && next.round?.seconds_left! <= 0) {
@@ -80,14 +79,23 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
 
   useEffect(() => {
     load();
-    const poll = window.setInterval(load, 1200);
-    return () => window.clearInterval(poll);
-  }, [load]);
+    let interval: number;
 
-  useEffect(() => {
-    const t = window.setInterval(() => setClock((s) => Math.max(0, s - 1)), 1000);
-    return () => window.clearInterval(t);
-  }, []);
+    if (!state) {
+      interval = window.setInterval(load, 1200);
+    } else if (round?.status === 'awaiting_spin') {
+      // Host hasn't spun yet — poll less often
+      interval = window.setInterval(load, 3000);
+    } else if (round?.status === 'voting') {
+      // Active voting — poll more often, aligned to server seconds_left
+      interval = window.setInterval(load, 1000);
+    } else {
+      // Settled or game over — stop polling
+      return;
+    }
+
+    return () => window.clearInterval(interval);
+  }, [load, state, round?.status]);
 
   useEffect(() => {
     setIntent(state?.me.vote === 'higher' || state?.me.vote === 'lower' ? state.me.vote : null);
@@ -96,19 +104,20 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
   useEffect(() => {
     if (round?.ball != null && prevBallRef.current !== round.ball) {
       prevBallRef.current = round.ball;
-      setSpinTrigger((k) => k + 1);
     }
   }, [round?.ball]);
 
   useEffect(() => {
-    if (state?.round?.status === 'settled') {
-      const ball = state.round.ball ?? 0;
-      const prev = prevBallRef.current ?? ball;
+    if (round?.ball != null && prevBallRef.current !== null && prevBallRef.current !== round.ball) {
+      const ball = round.ball;
+      const prev = prevBallRef.current;
       if (ball > prev) setResultFlash('win');
       else if (ball < prev) setResultFlash('loss');
       else setResultFlash('push');
     }
-  }, [state?.round?.status]);
+  }, [round?.ball]);
+
+  const justSpun = round?.ball != null && prevBallRef.current !== null && prevBallRef.current !== round.ball;
 
   const lockedIn = state?.me.vote === 'higher' || state?.me.vote === 'lower';
   const winner = ended && state?.game.winner_user_id
@@ -208,7 +217,7 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
         <span className="game__stat">{playersLeft} standing</span>
       </div>
 
-      <PoolBall ball={round?.ball ?? null} spinning={spinning} />
+      <PoolBall ball={round?.ball ?? null} spinning={justSpun} />
 
       {round && (
         <div className="game__pools">
@@ -235,7 +244,7 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
 
       {!ended && round?.status === 'voting' && (
         <>
-          <p className={`game__clock ${clock <= 5 && clock > 0 ? 'game__clock--urgent' : ''}`} aria-label="Seconds left to lock in">{clock}s</p>
+          <p className={`game__clock ${clockFromServer <= 5 && clockFromServer > 0 ? 'game__clock--urgent' : ''}`} aria-label="Seconds left to lock in">{clockFromServer}s</p>
           {isHost ? (
             <>
               <p className="game__hint">
