@@ -9,7 +9,7 @@
 import type pg from 'pg';
 import type { Hash, Hex } from 'viem';
 import { env } from '../config/env.js';
-import { pool, withTx } from '../db/pool.js';
+import { afterCommit, pool, withTx } from '../db/pool.js';
 import { broadcast, signUsdcTransfer, transferStatus } from '../chain/usdc.js';
 import { events } from '../events.js';
 import { log } from '../log.js';
@@ -48,6 +48,7 @@ export async function recordTransfer(
  * settlement can always commit.
  */
 export async function enqueuePayouts(client: pg.PoolClient, payouts: readonly PayoutRequest[]): Promise<void> {
+  if (payouts.some((p) => p.amount > 0n)) afterCommit(client, () => events.emit('payouts'));
   for (const p of payouts) {
     if (p.amount <= 0n) continue;
     const held = p.amount > env.MAX_AUTO_PAYOUT_USDC;
@@ -165,7 +166,7 @@ async function msUntilWork(): Promise<number | null> {
 }
 
 // Event-driven like the scheduler: idle queue = no polling (Neon can sleep);
-// settlements and refunds wake it through the lobby event.
+// every committed enqueue wakes it through the payouts event.
 let timer: NodeJS.Timeout | null = null;
 let busy = false;
 let stopped = true;
@@ -203,7 +204,7 @@ async function work(): Promise<void> {
 export function startPayoutWorker(): void {
   if (!stopped) return;
   stopped = false;
-  events.on('lobby', () => void work());
+  events.on('payouts', () => void work());
   void work();
   log.info('payout worker started');
 }

@@ -68,16 +68,19 @@ async function startDueLobbies(): Promise<number> {
   return failed;
 }
 
-/** ms until the next countdown or round phase is due; null = nothing scheduled. */
+/**
+ * ms until the next countdown or round phase is due; null = nothing scheduled.
+ * Measured on the database clock (deadlines are written with now()), so skew
+ * between this server and Postgres can't cause busy-looping or late phases.
+ */
 async function msUntilNextDue(): Promise<number | null> {
-  const res = await pool.query<{ next: Date | null }>(
-    `select least(
-       (select min(phase_ends_at) from public.rounds where phase in ('betting', 'rolling')),
-       (select min(starts_at) from public.lobbies where status = 'starting')
-     ) as next`,
+  const res = await pool.query<{ ms: number | null }>(
+    `select (extract(epoch from least(
+               (select min(phase_ends_at) from public.rounds where phase in ('betting', 'rolling')),
+               (select min(starts_at) from public.lobbies where status = 'starting')
+             ) - now()) * 1000)::float8 as ms`,
   );
-  const next = res.rows[0]?.next;
-  return next ? next.getTime() - Date.now() : null;
+  return res.rows[0]?.ms ?? null;
 }
 
 // Sleeps until the next due row instead of polling, and sleeps indefinitely
@@ -87,19 +90,25 @@ let timer: NodeJS.Timeout | null = null;
 let running = false;
 let stopped = true;
 let wakeAgain = false;
+/** Set once this tick has read the next deadline; earlier wakes are our own writes. */
+let readNextDue = false;
 
 async function loop(): Promise<void> {
   if (stopped) return;
   if (running) {
-    wakeAgain = true; // never overlap ticks
+    // Never overlap ticks. Wakes raised by this tick's own writes happen before
+    // it reads the next deadline, so only later (external) changes need a rerun.
+    if (readNextDue) wakeAgain = true;
     return;
   }
   running = true;
+  readNextDue = false;
   if (timer) clearTimeout(timer);
   timer = null;
   let delay: number | null;
   try {
     const failed = (await startDueLobbies()) + (await advanceDueRounds());
+    readNextDue = true;
     delay = await msUntilNextDue();
     if (failed > 0 && delay !== null) delay = Math.max(delay, RETRY_FAILED_MS);
   } catch (err) {

@@ -223,7 +223,7 @@ export async function careerFor(db: Db, userId: string): Promise<CareerEntry[]> 
                                      join public.rounds r on r.id = pk.round_id
                                     where r.game_id = g.id and pk.user_id = gp.user_id), 0))::text as paid_in,
             coalesce((select sum(p.amount) from public.payouts p
-                       where p.game_id = g.id and p.user_id = gp.user_id
+                       where p.game_id = g.id and p.user_id = gp.user_id and p.status <> 'failed'
                          and p.reason in ('pot', 'split', 'side_win', 'side_refund')), 0)::text as won
        from public.game_players gp
        join public.games g on g.id = gp.game_id
@@ -277,7 +277,12 @@ export async function gameReview(db: Db, gameId: string, userId: string, treasur
   if (!head) return null;
 
   const players = (
-    await db.query<{ user_id: string; display_name: string; placement: number | null; eliminated_round: number | null }>(
+    await db.query<{
+      user_id: string;
+      display_name: string;
+      placement: number | null;
+      eliminated_round: number | null;
+    }>(
       `select user_id, display_name, placement, eliminated_round from public.game_players
         where game_id = $1 order by placement nulls first, eliminated_round desc nulls first, display_name`,
       [gameId],
@@ -286,36 +291,48 @@ export async function gameReview(db: Db, gameId: string, userId: string, treasur
   const me = players.find((p) => p.user_id === userId);
   if (!me) return null;
 
-  const [roundsRes, picksRes, sideRes, insRes, outsRes] = await Promise.all([
-    db.query<{
-      id: string;
-      round_number: number;
-      prev_ball: number | null;
-      ball: number;
-      outcome: RoundOutcome;
-      seed: string;
-      seed_hash: string;
-    }>(
-      `select id, round_number, prev_ball, ball, outcome, seed, seed_hash from public.rounds
+  // Sequential on purpose: one review holds at most one pool connection, so
+  // players browsing history can't starve settlements and the scheduler.
+  const roundsRes = await db.query<{
+    id: string;
+    round_number: number;
+    prev_ball: number | null;
+    ball: number;
+    outcome: RoundOutcome;
+    seed: string;
+    seed_hash: string;
+  }>(
+    `select id, round_number, prev_ball, ball, outcome, seed, seed_hash from public.rounds
         where game_id = $1 and phase = 'settled' order by round_number`,
-      [gameId],
-    ),
-    db.query<{ round_id: string; user_id: string; direction: Direction; side_bet: bigint }>(
-      `select p.round_id, p.user_id, p.direction, p.side_bet
+    [gameId],
+  );
+  const picksRes = await db.query<{ round_id: string; user_id: string; direction: Direction; side_bet: bigint }>(
+    `select p.round_id, p.user_id, p.direction, p.side_bet
          from public.picks p join public.rounds r on r.id = p.round_id
         where r.game_id = $1 and r.phase = 'settled'
         order by p.created_at`,
-      [gameId],
-    ),
-    db.query<{ round_id: string; user_id: string; amount: bigint; reason: 'side_win' | 'side_refund' }>(
-      `select split_part(idempotency_key, ':', 2) as round_id, user_id, amount, reason
+    [gameId],
+  );
+  const sideRes = await db.query<{
+    round_id: string;
+    user_id: string;
+    amount: bigint;
+    reason: 'side_win' | 'side_refund';
+  }>(
+    `select split_part(idempotency_key, ':', 2) as round_id, user_id, amount, reason
          from public.payouts where game_id = $1 and reason in ('side_win', 'side_refund')`,
-      [gameId],
-    ),
-    // Money in: the buy-in, side bets placed in this game, and side-bet
-    // payments that were refunded (their refund payout carries the tx hash).
-    db.query<{ tx_hash: string; amount: bigint; purpose: 'buy_in' | 'side_bet'; created_at: Date; round_number: number | null }>(
-      `select t.tx_hash, t.amount, t.purpose, t.created_at, r.round_number
+    [gameId],
+  );
+  // Money in: the buy-in, side bets placed in this game, and side-bet
+  // payments that were refunded (their refund payout carries the tx hash).
+  const insRes = await db.query<{
+    tx_hash: string;
+    amount: bigint;
+    purpose: 'buy_in' | 'side_bet';
+    created_at: Date;
+    round_number: number | null;
+  }>(
+    `select t.tx_hash, t.amount, t.purpose, t.created_at, r.round_number
          from public.chain_transfers t
          left join public.picks p on p.side_bet_tx = t.tx_hash
          left join public.rounds r on r.id = p.round_id
@@ -324,24 +341,23 @@ export async function gameReview(db: Db, gameId: string, userId: string, treasur
                or r.game_id = $1
                or t.tx_hash in (select substr(idempotency_key, 8) from public.payouts
                                  where game_id = $1 and user_id = $2 and idempotency_key like 'refund:%'))`,
-      [gameId, userId, head.lobby_id],
-    ),
-    db.query<{
-      amount: bigint;
-      reason: PayoutReason;
-      status: PayoutStatus;
-      tx_hash: string | null;
-      created_at: Date;
-      round_number: number | null;
-    }>(
-      `select o.amount, o.reason, o.status, o.tx_hash, o.created_at, r.round_number
+    [gameId, userId, head.lobby_id],
+  );
+  const outsRes = await db.query<{
+    amount: bigint;
+    reason: PayoutReason;
+    status: PayoutStatus;
+    tx_hash: string | null;
+    created_at: Date;
+    round_number: number | null;
+  }>(
+    `select o.amount, o.reason, o.status, o.tx_hash, o.created_at, r.round_number
          from public.payouts o
          left join public.rounds r
            on o.reason in ('side_win', 'side_refund') and r.id::text = split_part(o.idempotency_key, ':', 2)
         where o.game_id = $1 and o.user_id = $2`,
-      [gameId, userId],
-    ),
-  ]);
+    [gameId, userId],
+  );
 
   const rounds: ReviewRound[] = roundsRes.rows.map((r) => ({
     number: r.round_number,

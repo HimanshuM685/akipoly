@@ -29,7 +29,7 @@ export class NetworkError extends Error {}
  * the tx hash exists until the server answers, and resubmitted after a
  * reconnect, so a dropped socket never strands a player's USDC.
  */
-type PaidMessage = Extract<Outgoing, { type: 'lobby.ready' } | { type: 'game.pick' }> & { txHash: string };
+export type PaidMessage = Extract<Outgoing, { type: 'lobby.ready' } | { type: 'game.pick' }> & { txHash: string };
 interface StoredPayment {
   userId: string;
   msg: PaidMessage;
@@ -73,6 +73,8 @@ interface GameSocketValue {
   /** serverTime - Date.now(), for local countdowns. */
   clockOffset: number;
   request: <T = unknown>(msg: Outgoing) => Promise<T>;
+  /** Payments sent on-chain whose request hasn't been answered yet. */
+  pendingPayments: PaidMessage[];
   /** Pay on-chain, then report it; survives reconnects (see PaidMessage). */
   paidRequest: (
     pay: (onSent: (txHash: string) => void) => Promise<string>,
@@ -273,6 +275,12 @@ export function GameSocketProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const inFlight = useRef(new Set<string>());
+  const [pendingPayments, setPendingPayments] = useState<PaidMessage[]>([]);
+  const syncPending = useCallback(() => {
+    const userId = session?.userId;
+    setPendingPayments(userId ? loadPayments().filter((p) => p.userId === userId).map((p) => p.msg) : []);
+  }, [session]);
+  useEffect(syncPending, [syncPending]);
 
   const paidRequest = useCallback(
     async (pay: (onSent: (txHash: string) => void) => Promise<string>, build: (txHash: string) => PaidMessage) => {
@@ -284,6 +292,7 @@ export function GameSocketProvider({ children }: { children: ReactNode }) {
         msg = build(txHash);
         inFlight.current.add(txHash);
         rememberPayment({ userId, msg });
+        syncPending();
       };
       let txHash: string;
       try {
@@ -299,14 +308,18 @@ export function GameSocketProvider({ children }: { children: ReactNode }) {
         forgetPayment(txHash);
         return data;
       } catch (err) {
-        if (err instanceof NetworkError) toast("payment is safe — we'll report it as soon as you're back online");
-        else forgetPayment(txHash); // the server answered (and refunds anything it couldn't use)
+        if (err instanceof NetworkError) {
+          // The money left the wallet; never invite a second payment.
+          throw new Error("payment sent — it'll be confirmed as soon as you're back online. no need to pay again.");
+        }
+        forgetPayment(txHash); // the server answered (and refunds anything it couldn't use)
         throw err;
       } finally {
         inFlight.current.delete(txHash);
+        syncPending();
       }
     },
-    [session, request, toast],
+    [session, request, syncPending],
   );
 
   // After every (re)connect, report payments whose request never got an answer.
@@ -325,9 +338,12 @@ export function GameSocketProvider({ children }: { children: ReactNode }) {
           forgetPayment(p.msg.txHash);
           if (!/already used/.test(err.message)) toast(`earlier payment: ${err.message}`);
         })
-        .finally(() => inFlight.current.delete(p.msg.txHash));
+        .finally(() => {
+          inFlight.current.delete(p.msg.txHash);
+          syncPending();
+        });
     }
-  }, [status, session, request, toast]);
+  }, [status, session, request, toast, syncPending]);
 
   // First login: the token can predate the embedded wallet. Once the wallet
   // shows up, refresh the identity token and re-authenticate once.
@@ -354,12 +370,27 @@ export function GameSocketProvider({ children }: { children: ReactNode }) {
       game,
       clockOffset,
       request,
+      pendingPayments,
       paidRequest,
       watchLobby,
       toasts,
       toast,
     }),
-    [status, session, lobbies, lobby, lobbyGone, game, clockOffset, request, paidRequest, watchLobby, toasts, toast],
+    [
+      status,
+      session,
+      lobbies,
+      lobby,
+      lobbyGone,
+      game,
+      clockOffset,
+      request,
+      pendingPayments,
+      paidRequest,
+      watchLobby,
+      toasts,
+      toast,
+    ],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

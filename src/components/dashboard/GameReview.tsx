@@ -49,7 +49,8 @@ export default function GameReview({ gameId, onBack }: Props) {
   const { request, status } = useGameSocket();
   const [review, setReview] = useState<Review | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [fair, setFair] = useState<Map<number, boolean>>(new Map());
+  // true = verified, false = mismatch, null = can't check in this browser context.
+  const [fair, setFair] = useState<Map<number, boolean | null>>(new Map());
 
   useEffect(() => {
     if (status !== 'ready') return;
@@ -68,9 +69,14 @@ export default function GameReview({ gameId, onBack }: Props) {
         const v = await verifyRound(r.seed, r.seedHash, review.gameId, r.number, r.ball);
         return [r.number, v.hashOk && v.ballOk] as const;
       }),
-    ).then((checks) => {
-      if (!cancelled) setFair(new Map(checks));
-    });
+    )
+      .then((checks) => {
+        if (!cancelled) setFair(new Map(checks));
+      })
+      .catch(() => {
+        // crypto.subtle only exists on https/localhost.
+        if (!cancelled) setFair(new Map(review.rounds.map((r) => [r.number, null])));
+      });
     return () => {
       cancelled = true;
     };
@@ -313,10 +319,10 @@ export default function GameReview({ gameId, onBack }: Props) {
                   </span>
                   <span className={`review__outcome review__outcome--${r.outcome}`}>{outcomeLabel[r.outcome]}</span>
                   <span
-                    className={`review__fair ${ok === false ? 'review__fair--bad' : ''}`}
+                    className={`review__fair ${ok === false ? 'review__fair--bad' : ok === null ? 'review__fair--na' : ''}`}
                     title="ball recomputed in your browser from the revealed seed"
                   >
-                    {ok === undefined ? 'checking…' : ok ? '✓ fair' : '✗ mismatch'}
+                    {ok === undefined ? 'checking…' : ok === null ? 'verify needs https' : ok ? '✓ fair' : '✗ mismatch'}
                   </span>
                 </div>
 

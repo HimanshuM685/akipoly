@@ -2,7 +2,7 @@
  * In-process change bus between services and the WS layer. Services emit
  * after their transaction commits; the WS layer re-reads and pushes views.
  * ponytail: single process. For several instances, back this with Postgres
- * LISTEN/NOTIFY (same three events).
+ * LISTEN/NOTIFY (same events).
  */
 import { EventEmitter } from 'node:events';
 import type { PayoutReason } from './shared/protocol.js';
@@ -10,6 +10,8 @@ import type { PayoutReason } from './shared/protocol.js';
 interface Events {
   lobby: [lobbyId: string];
   lobbies: [];
+  /** Payouts were enqueued and committed. */
+  payouts: [];
   payout: [userId: string, payout: { amount: string; reason: PayoutReason; txHash: string }];
 }
 

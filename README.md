@@ -80,8 +80,21 @@ npm ci
 npm run migrate:dev           # 001_init DROPS the old game tables (keeps app_users)
 npm run dev                   # ws://localhost:8081, /health, /ready
 npm test                      # rule + fairness unit tests
-# production: npm run build && npm run migrate && pm2 reload ecosystem.config.cjs
 ```
+
+**Production (Docker).** On the server, in `backend/`:
+
+```sh
+cp .env.example .env              # once: fill in the real values
+docker compose up -d --build      # builds, applies pending migrations, starts; restarts on crash/reboot
+docker compose logs -f            # logs
+git pull && docker compose up -d --build   # update
+```
+
+The container listens on 8081 and is published on the host at `PORT` (or
+`WS_PORT`) from `backend/.env`, default 8081. Migrations run on every start;
+already-applied ones are skipped. Moving off pm2: run `pm2 delete akipoly-game`
+once so the port is free.
 
 ```
 backend/src/shared/        protocol (zod) + Arc network table, imported by the site too

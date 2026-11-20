@@ -10,7 +10,7 @@ interface Props {
 }
 
 export default function LobbyRoom({ lobby, onLeave }: Props) {
-  const { status, session, request, paidRequest, clockOffset, toast } = useGameSocket();
+  const { status, session, request, paidRequest, pendingPayments, clockOffset, toast } = useGameSocket();
   const pay = usePayUsdc();
   const [step, setStep] = useState<'idle' | 'paying' | 'verifying' | 'refunding' | 'leaving'>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -20,7 +20,8 @@ export default function LobbyRoom({ lobby, onLeave }: Props) {
   const readyCount = lobby.players.filter((p) => p.ready).length;
   const pot = BigInt(lobby.buyIn) * BigInt(readyCount);
   const open = lobby.status === 'waiting' || lobby.status === 'starting';
-  const busy = step !== 'idle' || status !== 'ready';
+  const buyInPending = pendingPayments.some((p) => p.type === 'lobby.ready' && p.lobbyId === lobby.id);
+  const busy = step !== 'idle' || status !== 'ready' || buyInPending;
 
   const readyUp = async () => {
     if (!session) return;
@@ -121,7 +122,7 @@ export default function LobbyRoom({ lobby, onLeave }: Props) {
           <button type="button" className="btn btn--lg dash__btn" onClick={() => void readyUp()} disabled={busy}>
             {step === 'paying'
               ? 'confirm in wallet…'
-              : step === 'verifying'
+              : step === 'verifying' || buyInPending
                 ? 'verifying payment…'
                 : `ready · pay ${formatUsdc(lobby.buyIn)} usdc`}
           </button>
