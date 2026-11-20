@@ -41,7 +41,6 @@ interface Props {
   onLobbyLeft: () => void;
 }
 
-// Pool ball colors (1–15, 0 = cue white) — matches the physical ball set
 const ballColors: Record<number, string> = {
   1: '#FFD700',
   2: '#0000FF',
@@ -75,13 +74,11 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
   const [authenticated, setAuthenticated] = useState(false);
   const [connecting, setConnecting] = useState(true);
   const [toasts, setToasts] = useState<Array<{ id: number; message: string }>>([]);
-  const sendQueue: Array<{ message: object; resolve: () => void }> = [];
   const prevBallRef = useRef<number | null>(null);
   const previousStateRef = useRef<GameState | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const [resultFlash, setResultFlash] = useState<'win' | 'loss' | 'push' | null>(null);
 
-  // Derived values — declared BEFORE useEffect calls that reference them
   const round = state?.round ?? null;
   const ended = state?.game.ended ?? false;
   const isHost = state?.me.is_host ?? false;
@@ -135,7 +132,11 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
     ws.onopen = () => {
       console.log('[ws] connected');
       setConnecting(false);
-      // Send auth immediately, bypassing send() queue (authenticated is false initially)
+      // Send join_game and get_state immediately — these are read-only
+      // and don't require authentication
+      ws.send(JSON.stringify({ type: 'join_game', gameId }));
+      ws.send(JSON.stringify({ type: 'get_state', gameId }));
+      // Auth separately — needed only for writing actions (vote, bet, spin)
       getIdentityToken()
         .then((token) => {
           if (token && ws.readyState === WebSocket.OPEN) {
@@ -160,14 +161,10 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
             console.log('[ws] authenticated');
             setAuthenticated(true);
             flushQueue();
-            send({ type: 'join_game', gameId });
-            // Request current game state after joining
-            send({ type: 'get_state', gameId });
             break;
           case 'state':
             setState(data.snapshot);
             previousStateRef.current = data.snapshot;
-            // Handle elimination toasts
             if (data.snapshot && previousStateRef.current) {
               const prevEliminated = new Set(
                 previousStateRef.current.players.filter((p) => p.is_eliminated).map((p) => p.user_id),
@@ -307,12 +304,7 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
   }
 
   return (
-    <div
-      className={`game ${resultFlash ? `game--flash-${resultFlash}` : ''} ${connecting ? 'connecting' : ''}`}
-    >
-      {connecting && (
-        <p className="room__loading" role="status">Reconnecting…</p>
-      )}
+    <div className={`game ${resultFlash ? `game--flash-${resultFlash}` : ''} ${connecting ? 'connecting' : ''}`}>
       {toasts.length > 0 && (
         <div className="toasts">
           {toasts.map((t) => (
