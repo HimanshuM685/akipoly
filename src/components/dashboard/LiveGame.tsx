@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { usePrivy } from '@privy-io/react-auth';
+import { usePrivy, useIdentityToken } from '@privy-io/react-auth';
 
 interface PlayerRow {
   user_id: string;
@@ -63,13 +63,13 @@ const ballColors: Record<number, string> = {
 
 export default function LiveGame({ gameId, onLobbyLeft }: Props) {
   const wsUrl = 'wss://ws.akipoly.xyz';
-  const { getIdentityToken } = usePrivy();
+  const { identityToken } = useIdentityToken();
   const [state, setState] = useState<GameState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [intent, setIntent] = useState<'higher' | 'lower' | null>(null);
   const [betAmount, setBetAmount] = useState('');
   const [spinning, setSpinning] = useState(false);
-  const [respawing, setRespawing] = useState(false);
+  const [respawning, setRespawning] = useState(false);
   const [claiming, setClaiming] = useState(false);
   const [betPending, setBetPending] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
@@ -135,15 +135,9 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
     ws.onopen = () => {
       console.log('[ws] connected');
       setConnecting(false);
-      getIdentityToken()
-        .then((token) => {
-          if (token) {
-            send({ type: 'auth', token });
-          }
-        })
-        .catch((err) => {
-          console.error('[ws] auth token error:', err.message);
-        });
+      if (identityToken) {
+        send({ type: 'auth', token: identityToken });
+      }
     };
 
     ws.onmessage = (event) => {
@@ -166,7 +160,7 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
                 previousStateRef.current.players.filter((p) => p.is_eliminated).map((p) => p.user_id),
               );
               const newlyEliminated = data.snapshot.players.filter(
-                (p) => p.is_eliminated && !prevEliminated.has(p.user_id),
+                (p: PlayerRow) => p.is_eliminated && !prevEliminated.has(p.user_id),
               );
               for (const p of newlyEliminated) {
                 const prevPlayer = previousStateRef.current.players.find((x) => x.user_id === p.user_id);
@@ -244,6 +238,9 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
         direction: intent,
         amount: betAmount,
       });
+      // Lock in the vote with the same direction as the bet.
+      // Without this, settleRound() sees no vote and eliminates the player.
+      await send({ type: 'vote', gameId, choice: intent });
       setBetAmount('');
     } catch (err) {
       addToast(`Bet failed: ${(err as Error).message}`);
@@ -252,23 +249,14 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
     }
   };
 
-  const lockIn = async () => {
-    if (!intent || lockedIn) return;
-    try {
-      await send({ type: 'vote', gameId, choice: intent });
-    } catch (err) {
-      addToast(`Vote failed: ${(err as Error).message}`);
-    }
-  };
-
   const respin = async () => {
-    setRespawing(true);
+    setRespawning(true);
     try {
       await send({ type: 'settle', gameId, force: true });
     } catch (err) {
       addToast(`Respin failed: ${(err as Error).message}`);
     } finally {
-      setRespawing(false);
+      setRespawning(false);
     }
   };
 
@@ -367,9 +355,9 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
                 type="button"
                 className="btn dash__btn"
                 onClick={respin}
-                disabled={respawing}
+                disabled={respawning}
               >
-                {respawing ? 'respinning…' : 'respin the ball'}
+                {respawning ? 'respinning…' : 'respin the ball'}
               </button>
             </div>
           ) : state.me.is_eliminated ? (
