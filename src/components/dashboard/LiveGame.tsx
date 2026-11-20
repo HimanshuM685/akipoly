@@ -42,7 +42,7 @@ interface Props {
 }
 
 const ballColors: Record<number, string> = {
-  1: '#FFD700',
+  1: '#FFFD700',
   2: '#0000FF',
   3: '#FF0000',
   4: '#800080',
@@ -70,9 +70,6 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
   const [spinning, setSpinning] = useState(false);
   const [respawing, setRespawing] = useState(false);
   const [claiming, setClaiming] = useState(false);
-  const [betPending, setBetPending] = useState(false);
-  const [authenticated, setAuthenticated] = useState(false);
-  const [connecting, setConnecting] = useState(true);
   const [toasts, setToasts] = useState<Array<{ id: number; message: string }>>([]);
   const prevBallRef = useRef<number | null>(null);
   const previousStateRef = useRef<GameState | null>(null);
@@ -104,7 +101,7 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
 
   const send = (message: object) => {
     const ws = wsRef.current;
-    if (ws && ws.readyState === WebSocket.OPEN && authenticated) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify(message));
       return Promise.resolve();
     } else {
@@ -118,7 +115,7 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
     while (sendQueue.length) {
       const { message, resolve } = sendQueue.shift()!;
       const ws = wsRef.current;
-      if (ws && ws.readyState === WebSocket.OPEN && authenticated) {
+      if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify(message));
       }
       resolve();
@@ -132,14 +129,12 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
     ws.onopen = () => {
       console.log('[ws] connected');
       setConnecting(false);
-      // Send join_game immediately — doesn't need auth
       ws.send(JSON.stringify({ type: 'join_game', gameId }));
-      // Get state AFTER auth — needs userId
+      ws.send(JSON.stringify({ type: 'get_state', gameId }));
       getIdentityToken()
         .then((token) => {
           if (token && ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({ type: 'auth', token }));
-            ws.send(JSON.stringify({ type: 'get_state', gameId }));
           } else if (!token) {
             console.error('[ws] No identity token from Privy');
             addToast('Authentication failed: could not get identity token');
@@ -301,9 +296,6 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
   if (!state) {
     return <p className="room__loading">{connecting ? 'Connecting…' : 'waking the table…'}</p>;
   }
-
-  console.log('[LiveGame] state:', JSON.stringify(state, null, 2));
-  console.log('[livegame] isHost:', state.me.is_host, '| host_user_id:', state.lobby.host_user_id, '| me.user_id:', state.me.user_id);
 
   return (
     <div className={`game ${resultFlash ? `game--flash-${resultFlash}` : ''} ${connecting ? 'connecting' : ''}`}>
