@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 
 export const ROUND_SECONDS = 30;
+export const AUTO_ROLL_SECONDS = 5;
 export const MAX_PLAYERS = 10;
 export const INITIAL_BALANCE = 1000000; // 1.000000 USDC equivalent in 6dp
 

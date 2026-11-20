@@ -4,6 +4,7 @@ import { initDb, withTransaction, query } from './db.js';
 import {
   snapshotGame,
   ROUND_SECONDS,
+  AUTO_ROLL_SECONDS,
   rollBall,
   placeBet,
   settleRound,
@@ -18,9 +19,6 @@ const socketUserId = new Map(); // WebSocket -> userId
 const socketQueues = new Map(); // WebSocket -> array of messages sent before auth
 const messageCache = new Map(); // `${userId}:${message_id}` -> expiry timestamp
 const MESSAGE_TTL_MS = 5 * 60 * 1000;
-
-// Seconds after a round enters awaiting_spin before the ball rolls on its own.
-export const AUTO_ROLL_SECONDS = 5;
 
 let dbInitialized = false;
 let authInitialized = false;
@@ -316,12 +314,12 @@ export async function initWs(server, config) {
 
   // Auto game loop: roll the ball after AUTO_ROLL_SECONDS, then auto-settle
   // each round when its voting window expires. Runs independently of clients.
+  // Drive the loop off round status (awaiting_spin / voting) rather than
+  // games.status, which may not exist on older databases.
   async function tick() {
     if (!dbInitialized) return;
     try {
-      const games = await query(
-        `select id from public.games where status = 'live'`,
-      );
+      const games = await query(`select id from public.games`);
       for (const { id: gameId } of games.rows) {
         const roundRes = await query(
           `select id, status, created_at, opened_at from public.rounds
