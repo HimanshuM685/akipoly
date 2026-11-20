@@ -194,7 +194,7 @@ export async function snapshotGame(
   const claimsRes = roundRow
     ? await client.query(
         `select user_id, coalesce(sum(claimable), 0) as claimable from public.bets
-         where game_id = $1 and settled = false group by user_id`,
+         where game_id = $1 and settled = true and claimable > 0 group by user_id`,
         [gameId],
       )
     : { rows: [] };
@@ -522,7 +522,7 @@ export async function claimWinnings(
 ) {
   const claimRes = await client.query(
     `select coalesce(sum(claimable), 0) as total from public.bets
-     where game_id = $1 and user_id = $2 and settled = false`,
+     where game_id = $1 and user_id = $2 and settled = true and claimable > 0`,
     [gameId, userId],
   );
   const total = parseInt(claimRes.rows[0]?.total ?? '0', 10);
@@ -530,7 +530,7 @@ export async function claimWinnings(
 
   // Zero the claimable balances first (checks-effects-interactions)
   await client.query(
-    `update public.bets set claimable = 0 where game_id = $1 and user_id = $2 and settled = false`,
+    `update public.bets set claimable = 0 where game_id = $1 and user_id = $2 and settled = true and claimable > 0`,
     [gameId, userId],
   );
 
