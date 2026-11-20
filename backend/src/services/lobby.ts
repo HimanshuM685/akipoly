@@ -9,11 +9,11 @@
 import type pg from 'pg';
 import type { Hash } from 'viem';
 import { env } from '../config/env.js';
-import { pool, withTx } from '../db/pool.js';
-import { verifyIncomingTransfer } from '../chain/usdc.js';
+import { withTx } from '../db/pool.js';
+import { incomingTransferTotal } from '../chain/usdc.js';
 import { AppError, badRequest, conflict, notFound } from '../errors.js';
 import { lobbiesChanged } from '../events.js';
-import { enqueuePayouts } from './payouts.js';
+import { enqueuePayouts, recordTransfer } from './payouts.js';
 import { startGame } from './game.js';
 import { MAX_PLAYERS } from '../shared/protocol.js';
 
@@ -160,32 +160,35 @@ export async function leaveLobby(userId: string, lobbyId: string): Promise<void>
   lobbiesChanged([lobbyId]);
 }
 
-/** Ready = buy-in paid. Verifies the on-chain transfer before seating the money. */
+/**
+ * Ready = buy-in paid. Any valid payment that can't be used (wrong amount,
+ * lobby gone or started, already ready) is recorded and refunded, never kept.
+ */
 export async function readyUp(userId: string, walletAddress: string | null, lobbyId: string, txHash: string) {
   if (!walletAddress) throw new AppError('NO_WALLET', 'no embedded wallet linked to this account');
-  const pre = (await pool.query<LobbyRow>(`select buy_in, status from public.lobbies where id = $1`, [lobbyId]))
-    .rows[0];
-  if (!pre) throw notFound('lobby not found');
-  await verifyIncomingTransfer({ txHash: txHash as Hash, from: walletAddress, amount: pre.buy_in });
+  const received = await incomingTransferTotal({ txHash: txHash as Hash, from: walletAddress });
 
   let rejection = null as AppError | null;
   await withTx(async (c) => {
-    const recorded = await c.query(
-      `insert into public.chain_transfers (tx_hash, user_id, from_address, amount, purpose)
-       values ($1, $2, $3, $4, 'buy_in') on conflict do nothing`,
-      [txHash, userId, walletAddress, pre.buy_in],
-    );
-    if (recorded.rowCount === 0) throw new AppError('PAYMENT_INVALID', 'that transaction was already used');
+    await recordTransfer(c, { txHash, userId, from: walletAddress, amount: received, purpose: 'buy_in' });
 
-    const lobby = await lockLobby(c, lobbyId);
-    const p = await player(c, lobbyId, userId);
-    if (lobby.status !== 'waiting' && lobby.status !== 'starting') rejection = conflict('this game already started');
+    const lobby = (
+      await c.query<LobbyRow>(
+        `select id, owner_user_id, buy_in, status, max_players from public.lobbies where id = $1 for update`,
+        [lobbyId],
+      )
+    ).rows[0];
+    const p = lobby ? await player(c, lobbyId, userId) : undefined;
+    if (!lobby) rejection = notFound('lobby not found');
+    else if (received !== lobby.buy_in)
+      rejection = new AppError('PAYMENT_INVALID', 'payment does not match the buy-in — refunding it');
+    else if (lobby.status !== 'waiting' && lobby.status !== 'starting') rejection = conflict('this game already started');
     else if (!p) rejection = badRequest('take a seat before paying');
     else if (p.ready) rejection = conflict('you already paid the buy-in');
 
     if (rejection) {
       // Money arrived but can't be used: send it straight back.
-      await enqueuePayouts(c, [{ key: refundKey(txHash), userId, amount: pre.buy_in, reason: 'refund' }]);
+      await enqueuePayouts(c, [{ key: refundKey(txHash), userId, amount: received, reason: 'refund' }]);
       return;
     }
     await c.query(`update public.lobby_players set ready = true, buy_in_tx = $3 where lobby_id = $1 and user_id = $2`, [

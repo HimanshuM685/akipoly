@@ -2279,6 +2279,253 @@ html.wave-pending .waterwave {
   }
 }
 
+/* Career rows open the game review */
+.career__row--btn {
+  width: 100%;
+  grid-template-columns: 48px 1fr auto auto;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.career__row--btn:hover,
+.career__row--btn:focus-visible {
+  transform: translate(-2px, -2px);
+  box-shadow: var(--shadow-pressed);
+}
+
+.career__pts--up { color: #2f7d1d; }
+.career__pts--down { color: #a33a2a; }
+
+.career__go {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(23, 23, 23, 0.55);
+}
+
+/* Game review */
+.review {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  width: min(860px, 100%);
+}
+
+.review__back {
+  align-self: flex-start;
+  background: none;
+  border: 0;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+}
+
+.review__head { display: flex; flex-direction: column; gap: var(--space-1); }
+.review__sub,
+.review__note { font-size: 0.85rem; color: rgba(23, 23, 23, 0.65); }
+.review__verdict { font-weight: 700; }
+
+.review__title {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  margin-bottom: var(--space-2);
+}
+
+.review__summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--space-2);
+}
+
+.review__stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--color-paper);
+  border: 2px solid var(--color-ink);
+  border-radius: var(--radius-badge);
+  padding: var(--space-2) var(--space-3);
+}
+
+.review__stat span {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(23, 23, 23, 0.6);
+}
+
+.review__stat strong { font-variant-numeric: tabular-nums; font-size: 1.05rem; }
+.review__stat--up { background: var(--color-success); }
+.review__stat--down { background: #ffd2c7; }
+
+.review__ball {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid var(--color-ink);
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.review__path {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.review__step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+  border: 2px solid var(--color-ink);
+  border-radius: var(--radius-badge);
+  background: var(--color-paper);
+  min-width: 46px;
+}
+
+.review__step small { font-size: 0.65rem; font-weight: 700; }
+.review__step--higher { background: var(--color-success); }
+.review__step--lower { background: #ffb9aa; }
+.review__step--push,
+.review__step--void { background: var(--color-special); }
+
+.review__mark { font-weight: 700; min-height: 1em; font-size: 0.8rem; }
+.review__mark--out { color: #a33a2a; }
+
+.review__ledger,
+.review__calls {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.review__ledger th {
+  text-align: left;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(23, 23, 23, 0.6);
+  padding: 4px 6px;
+  border-bottom: 2px solid var(--color-ink);
+}
+
+.review__ledger td,
+.review__calls td {
+  padding: 6px;
+  border-bottom: 1px solid rgba(23, 23, 23, 0.15);
+  vertical-align: middle;
+}
+
+.review__ledger a { font-family: ui-monospace, monospace; font-size: 0.8rem; }
+
+.review__amt { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.review__amt--in { color: #a33a2a; }
+.review__amt--out { color: #2f7d1d; }
+
+.review__badge {
+  border: 2px solid var(--color-ink);
+  border-radius: var(--radius-badge);
+  padding: 1px 6px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: var(--color-paper);
+}
+
+.review__badge--confirmed { background: var(--color-success); }
+.review__badge--pending,
+.review__badge--sent { background: var(--color-primary); }
+.review__badge--held,
+.review__badge--failed { background: #ffb9aa; }
+
+.review__rounds {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.review__round {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  background: var(--color-paper);
+  border: 2px solid var(--color-ink);
+  border-radius: var(--radius-card);
+  padding: var(--space-3);
+}
+
+.review__round-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.review__balls { display: inline-flex; align-items: center; gap: 6px; }
+
+.review__outcome {
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+}
+
+.review__fair {
+  margin-left: auto;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #2f7d1d;
+}
+
+.review__fair--bad { color: #a33a2a; }
+.review__me { background: rgba(255, 245, 0, 0.35); }
+
+@media (max-width: 620px) {
+  .career__row--btn { grid-template-columns: 40px 1fr auto; }
+  .career__go { display: none; }
+
+  .review__ledger thead { display: none; }
+  .review__ledger,
+  .review__ledger tbody,
+  .review__ledger tr,
+  .review__ledger td { display: block; width: 100%; }
+  .review__ledger tr {
+    border: 2px solid var(--color-ink);
+    border-radius: var(--radius-badge);
+    background: var(--color-paper);
+    margin-bottom: var(--space-2);
+    padding: 4px 0;
+  }
+  .review__ledger td {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-3);
+    border-bottom: 0;
+    padding: 3px 10px;
+  }
+  .review__ledger td::before {
+    content: attr(data-label);
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: rgba(23, 23, 23, 0.55);
+  }
+  .review__fair { margin-left: 0; }
+}
+
 /* ------------------------------------------------------------------ */
 /*  Reduced motion                                                     */
 /* ------------------------------------------------------------------ */

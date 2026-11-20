@@ -7,21 +7,36 @@ import LobbyBrowser from './dashboard/LobbyBrowser';
 import LobbyRoom from './dashboard/LobbyRoom';
 import LiveGame from './dashboard/LiveGame';
 import CareerPanel from './dashboard/CareerPanel';
+import GameReview from './dashboard/GameReview';
 import Toasts from './dashboard/Toasts';
 
 const APP_ID = import.meta.env.PUBLIC_PRIVY_APP_ID as string | undefined;
 
-type Screen = { name: 'lobbies' } | { name: 'table'; lobbyId: string } | { name: 'career' };
+type Screen =
+  | { name: 'lobbies' }
+  | { name: 'table'; lobbyId: string }
+  | { name: 'career' }
+  | { name: 'review'; gameId: string };
 
 /** A lobby before the game, the live game after. One subscription for both. */
 function Table({ lobbyId, onLeave }: { lobbyId: string; onLeave: () => void }) {
-  const { lobby, game, watchLobby } = useGameSocket();
+  const { lobby, lobbyGone, game, watchLobby } = useGameSocket();
 
   useEffect(() => {
     watchLobby(lobbyId);
     return () => watchLobby(null);
   }, [lobbyId, watchLobby]);
 
+  if (lobbyGone) {
+    return (
+      <div className="room">
+        <p className="dash__copy">this table doesn&apos;t exist anymore.</p>
+        <button type="button" className="btn dash__btn" onClick={onLeave}>
+          back to tables
+        </button>
+      </div>
+    );
+  }
   if (!lobby || lobby.id !== lobbyId) return <p className="room__loading">finding a seat…</p>;
   if (game) return <LiveGame lobby={lobby} game={game} onLeave={onLeave} />;
   return <LobbyRoom lobby={lobby} onLeave={onLeave} />;
@@ -90,7 +105,16 @@ function DashboardGate() {
         <Table lobbyId={screen.lobbyId} onLeave={() => setScreen({ name: 'lobbies' })} />
       )}
 
-      {screen.name === 'career' && <CareerPanel />}
+      {screen.name === 'career' && (
+        <CareerPanel
+          onReview={(gameId) => setScreen({ name: 'review', gameId })}
+          onOpenTable={(lobbyId) => setScreen({ name: 'table', lobbyId })}
+        />
+      )}
+
+      {screen.name === 'review' && (
+        <GameReview gameId={screen.gameId} onBack={() => setScreen({ name: 'career' })} />
+      )}
     </div>
     </GameSocketProvider>
   );

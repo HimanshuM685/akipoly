@@ -34,15 +34,13 @@ const usdc = getAddress(arc.usdc);
 const invalid = (m: string) => new AppError('PAYMENT_INVALID', m);
 
 /**
- * Confirm that txHash is a successful USDC transfer of exactly `amount`
- * from `from` to the treasury. Replay protection (one use per hash) is the
- * caller's job via the chain_transfers primary key.
+ * Total USDC (base units) that txHash moved from `from` to the treasury.
+ * Throws if the tx is missing, reverted, or moved nothing to us. Callers
+ * compare the total with what they expected and refund on mismatch, so a
+ * valid payment is never kept without a seat or a refund. Replay protection
+ * (one use per hash) is the chain_transfers primary key.
  */
-export async function verifyIncomingTransfer(params: {
-  txHash: Hash;
-  from: string;
-  amount: bigint;
-}): Promise<void> {
+export async function incomingTransferTotal(params: { txHash: Hash; from: string }): Promise<bigint> {
   let receipt;
   try {
     receipt = await publicClient.waitForTransactionReceipt({ hash: params.txHash, timeout: 30_000 });
@@ -52,16 +50,16 @@ export async function verifyIncomingTransfer(params: {
   if (receipt.status !== 'success') throw invalid('transaction reverted');
 
   const from = getAddress(params.from);
-  const transfers = parseEventLogs({ abi: erc20Abi, eventName: 'Transfer', logs: receipt.logs }).filter(
-    (l) =>
-      getAddress(l.address) === usdc &&
-      getAddress(l.args.from) === from &&
-      getAddress(l.args.to) === treasuryAddress,
-  );
-  const total = transfers.reduce((sum, l) => sum + l.args.value, 0n);
-  if (total !== params.amount) {
-    throw invalid(`expected a USDC transfer of exactly ${params.amount} base units to the treasury`);
-  }
+  const total = parseEventLogs({ abi: erc20Abi, eventName: 'Transfer', logs: receipt.logs })
+    .filter(
+      (l) =>
+        getAddress(l.address) === usdc &&
+        getAddress(l.args.from) === from &&
+        getAddress(l.args.to) === treasuryAddress,
+    )
+    .reduce((sum, l) => sum + l.args.value, 0n);
+  if (total === 0n) throw invalid('no USDC transfer from your wallet to the treasury in that transaction');
+  return total;
 }
 
 /**

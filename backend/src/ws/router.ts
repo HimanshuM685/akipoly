@@ -6,10 +6,10 @@
 import { ZodError } from 'zod';
 import { env, arc } from '../config/env.js';
 import { pool } from '../db/pool.js';
-import { careerFor, upsertUser } from '../db/views.js';
+import { careerFor, gameReview, upsertUser } from '../db/views.js';
 import { verifyIdentityToken } from '../auth/privy.js';
 import { treasuryAddress } from '../chain/usdc.js';
-import { AppError } from '../errors.js';
+import { AppError, forbidden } from '../errors.js';
 import { createLobby, joinLobby, leaveLobby, readyUp, unready } from '../services/lobby.js';
 import { placePick } from '../services/game.js';
 import { log } from '../log.js';
@@ -20,6 +20,21 @@ type Handler<T extends ClientMessage['type']> = (
   s: Session & { userId: string },
   msg: Extract<ClientMessage, { type: T }>,
 ) => Promise<unknown>;
+
+/**
+ * The identity token can predate the embedded wallet (Privy creates it right
+ * after first login). Fall back to the address another session stored.
+ */
+async function walletOf(s: Session & { userId: string }): Promise<string | null> {
+  if (!s.walletAddress) {
+    const res = await pool.query<{ wallet_address: string | null }>(
+      'select wallet_address from public.app_users where privy_user_id = $1',
+      [s.userId],
+    );
+    s.walletAddress = res.rows[0]?.wallet_address ?? null;
+  }
+  return s.walletAddress;
+}
 
 const handlers: { [T in Exclude<ClientMessage['type'], 'auth'>]: Handler<T> } = {
   'lobbies.watch': (s) => watchList(s),
@@ -38,12 +53,12 @@ const handlers: { [T in Exclude<ClientMessage['type'], 'auth'>]: Handler<T> } = 
     await leaveLobby(s.userId, m.lobbyId);
     unwatchLobby(s);
   },
-  'lobby.ready': (s, m) => readyUp(s.userId, s.walletAddress, m.lobbyId, m.txHash),
+  'lobby.ready': async (s, m) => readyUp(s.userId, await walletOf(s), m.lobbyId, m.txHash),
   'lobby.unready': (s, m) => unready(s.userId, m.lobbyId),
-  'game.pick': (s, m) =>
+  'game.pick': async (s, m) =>
     placePick({
       userId: s.userId,
-      walletAddress: s.walletAddress,
+      walletAddress: m.sideBet && m.sideBet !== '0' ? await walletOf(s) : s.walletAddress,
       gameId: m.gameId,
       roundNumber: m.roundNumber,
       direction: m.direction,
@@ -51,6 +66,11 @@ const handlers: { [T in Exclude<ClientMessage['type'], 'auth'>]: Handler<T> } = 
       txHash: m.txHash,
       arrivedAt: new Date(),
     }),
+  'game.review': async (s, m) => {
+    const review = await gameReview(pool, m.gameId, s.userId, treasuryAddress);
+    if (!review) throw forbidden('you were not in this game');
+    return review;
+  },
   'career.get': async (s, m) => {
     s.send({ type: 'career', reqId: m.reqId, games: await careerFor(pool, s.userId) });
     return undefined;

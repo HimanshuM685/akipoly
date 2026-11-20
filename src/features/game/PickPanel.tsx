@@ -11,7 +11,7 @@ interface Props {
 
 /** Call higher/lower for the current round, optionally backed by a USDC side bet. */
 export default function PickPanel({ game }: Props) {
-  const { session, request, status } = useGameSocket();
+  const { session, request, paidRequest, status } = useGameSocket();
   const pay = usePayUsdc();
   const [direction, setDirection] = useState<Direction | null>(null);
   const [sideBet, setSideBet] = useState('');
@@ -29,19 +29,21 @@ export default function PickPanel({ game }: Props) {
     if (!direction || !session || sideError || sideUnits === null) return;
     setError(null);
     try {
-      let txHash: string | undefined;
+      const pick = { type: 'game.pick' as const, gameId: game.id, roundNumber: round.number, direction };
       if (sideUnits > 0n) {
         setStep('paying');
-        txHash = await pay(session.treasury, sideUnits);
+        await paidRequest(
+          (onSent) =>
+            pay(session.treasury, sideUnits, (hash) => {
+              onSent(hash);
+              setStep('sending');
+            }),
+          (txHash) => ({ ...pick, sideBet: sideUnits.toString(), txHash }),
+        );
+      } else {
+        setStep('sending');
+        await request(pick);
       }
-      setStep('sending');
-      await request({
-        type: 'game.pick',
-        gameId: game.id,
-        roundNumber: round.number,
-        direction,
-        ...(sideUnits > 0n ? { sideBet: sideUnits.toString(), txHash } : {}),
-      });
     } catch (err) {
       setError((err as Error).message);
     } finally {

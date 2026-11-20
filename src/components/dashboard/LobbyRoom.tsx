@@ -10,7 +10,7 @@ interface Props {
 }
 
 export default function LobbyRoom({ lobby, onLeave }: Props) {
-  const { status, session, request, clockOffset, toast } = useGameSocket();
+  const { status, session, request, paidRequest, clockOffset, toast } = useGameSocket();
   const pay = usePayUsdc();
   const [step, setStep] = useState<'idle' | 'paying' | 'verifying' | 'refunding' | 'leaving'>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -27,9 +27,14 @@ export default function LobbyRoom({ lobby, onLeave }: Props) {
     setError(null);
     try {
       setStep('paying');
-      const txHash = await pay(session.treasury, BigInt(lobby.buyIn));
-      setStep('verifying');
-      await request({ type: 'lobby.ready', lobbyId: lobby.id, txHash });
+      await paidRequest(
+        (onSent) =>
+          pay(session.treasury, BigInt(lobby.buyIn), (hash) => {
+            onSent(hash);
+            setStep('verifying');
+          }),
+        (txHash) => ({ type: 'lobby.ready', lobbyId: lobby.id, txHash }),
+      );
     } catch (err) {
       setError((err as Error).message);
     } finally {

@@ -19,10 +19,10 @@ import {
   settleSideBets,
   type PickInput,
 } from '../domain/rules.js';
-import { verifyIncomingTransfer } from '../chain/usdc.js';
+import { incomingTransferTotal } from '../chain/usdc.js';
 import { AppError, badRequest, conflict, notFound } from '../errors.js';
 import { lobbiesChanged } from '../events.js';
-import { enqueuePayouts } from './payouts.js';
+import { enqueuePayouts, recordTransfer } from './payouts.js';
 import type { Direction } from '../shared/protocol.js';
 
 const BETTING_MS = env.BETTING_SECONDS * 1000;
@@ -197,22 +197,25 @@ export interface PickRequest {
 
 export async function placePick(req: PickRequest): Promise<void> {
   const paying = req.sideBet > 0n;
+  let received = 0n;
   if (paying) {
-    if (req.sideBet > env.MAX_SIDE_BET_USDC) throw badRequest('side bet is above the table limit');
     if (!req.txHash) throw badRequest('side bet needs a payment transaction');
     if (!req.walletAddress) throw new AppError('NO_WALLET', 'no embedded wallet linked to this account');
-    await verifyIncomingTransfer({ txHash: req.txHash as Hash, from: req.walletAddress, amount: req.sideBet });
+    received = await incomingTransferTotal({ txHash: req.txHash as Hash, from: req.walletAddress });
   }
 
   let rejection = null as AppError | null;
   const lobbyId = await withTx(async (c) => {
     if (paying) {
-      const recorded = await c.query(
-        `insert into public.chain_transfers (tx_hash, user_id, from_address, amount, purpose)
-         values ($1, $2, $3, $4, 'side_bet') on conflict do nothing`,
-        [req.txHash, req.userId, req.walletAddress, req.sideBet],
-      );
-      if (recorded.rowCount === 0) throw new AppError('PAYMENT_INVALID', 'that transaction was already used');
+      await recordTransfer(c, {
+        txHash: req.txHash!,
+        userId: req.userId,
+        from: req.walletAddress!,
+        amount: received,
+        purpose: 'side_bet',
+      });
+      if (received !== req.sideBet) rejection = new AppError('PAYMENT_INVALID', 'payment does not match the side bet');
+      else if (req.sideBet > env.MAX_SIDE_BET_USDC) rejection = badRequest('side bet is above the table limit');
     }
 
     const round = (
@@ -227,11 +230,13 @@ export async function placePick(req: PickRequest): Promise<void> {
       )
     ).rows[0];
 
-    if (!round) rejection = notFound('round not found');
-    else if (round.alive === null) rejection = badRequest('you are not playing this game');
-    else if (!round.alive) rejection = badRequest('you are out — spectate till the end');
-    else if (round.phase !== 'betting' || req.arrivedAt > round.phase_ends_at) rejection = conflict('calls are closed');
-    else if (!isPickPossible(round.prev_ball!, req.direction)) rejection = badRequest(`nothing is ${req.direction}`);
+    if (!rejection) {
+      if (!round) rejection = notFound('round not found');
+      else if (round.alive === null) rejection = badRequest('you are not playing this game');
+      else if (!round.alive) rejection = badRequest('you are out — spectate till the end');
+      else if (round.phase !== 'betting' || req.arrivedAt > round.phase_ends_at) rejection = conflict('calls are closed');
+      else if (!isPickPossible(round.prev_ball!, req.direction)) rejection = badRequest(`nothing is ${req.direction}`);
+    }
 
     if (!rejection && round) {
       const inserted = await c.query(
@@ -245,7 +250,7 @@ export async function placePick(req: PickRequest): Promise<void> {
     if (rejection) {
       if (paying) {
         await enqueuePayouts(c, [
-          { key: `refund:${req.txHash}`, userId: req.userId, amount: req.sideBet, reason: 'refund', gameId: req.gameId },
+          { key: `refund:${req.txHash}`, userId: req.userId, amount: received, reason: 'refund', gameId: req.gameId },
         ]);
       }
       return round?.lobby_id ?? null;

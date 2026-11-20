@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { BALL_MAX, BALL_MIN } from '../../../backend/src/shared/constants';
 
-const BALL_COLORS: Record<number, string> = {
+export const BALL_COLORS: Record<number, string> = {
   0: '#F4F1E6',
   1: '#FFD700',
   2: '#2563EB',
@@ -25,7 +25,7 @@ const BALL_COLORS: Record<number, string> = {
   15: '#C2410C',
   16: '#14B8A6',
 };
-const DARK = new Set([2, 3, 4, 7, 8, 15]);
+export const DARK_BALLS = new Set([2, 3, 4, 7, 8, 15]);
 
 const pad = (n: number) => String(n).padStart(2, '0');
 const randomBall = (not: number | null) => {
@@ -91,7 +91,7 @@ export default function BallReel({ value, rolling, landAt, rollingMs, clockOffse
         className={`game__ball ${phase === 'rolling' ? 'game__ball--rolling' : ''} ${phase === 'landed' ? 'game__ball--landed' : ''}`}
         style={{
           backgroundColor: n === null ? 'var(--color-paper)' : BALL_COLORS[n],
-          color: n !== null && DARK.has(n) ? '#FFFDF2' : '#171717',
+          color: n !== null && DARK_BALLS.has(n) ? '#FFFDF2' : '#171717',
         }}
         role="img"
         aria-label={phase === 'rolling' ? 'ball rolling' : n === null ? 'no ball yet' : `ball ${n}`}

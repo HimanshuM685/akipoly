@@ -37,9 +37,14 @@ export async function migrate(): Promise<string[]> {
 
 export async function pendingMigrations(): Promise<string[]> {
   const files = (await readdir(dir)).filter((f) => /^\d+_.+\.sql$/.test(f));
+  // Only a missing table means "nothing applied yet"; connection or auth
+  // errors propagate so they aren't misreported as a stale schema.
   const res = await pool
     .query<{ name: string }>('select name from public.schema_migrations')
-    .catch(() => ({ rows: [] as { name: string }[] }));
+    .catch((err: { code?: string }) => {
+      if (err.code === '42P01') return { rows: [] as { name: string }[] };
+      throw err;
+    });
   const done = new Set(res.rows.map((r) => r.name));
   return files.filter((f) => !done.has(f));
 }
