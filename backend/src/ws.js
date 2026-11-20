@@ -55,7 +55,7 @@ async function assertSeated(gameId, userId) {
   if (res.rowCount === 0) throw new Error('Not seated in this game');
 }
 
-export async function initWs(server, config) {
+export function initWs(server, config) {
   const { databaseUrl, privyAppId, arcRpcUrl, usdcContract, opPrivateKey, opAddress } = config;
 
   if (databaseUrl) {
@@ -64,9 +64,10 @@ export async function initWs(server, config) {
       dbInitialized = true;
       console.log('[ws] Database initialized');
       // Ensure rounds.created_at exists for the auto-roll ticker on existing DBs.
-      await query(
+      // Fire-and-forget so the WebSocket server attaches before server.listen.
+      query(
         `alter table public.rounds add column if not exists created_at timestamptz default now()`,
-      );
+      ).catch((err) => console.error('[ws] rounds.created_at migration failed:', err.message));
     } catch (err) {
       console.error('[ws] Database init failed:', err.message);
     }
@@ -182,35 +183,7 @@ export async function initWs(server, config) {
             });
             ws.send(JSON.stringify({ type: 'settle_result', ...result }));
 
-            // Payout atomicity: settleRound inserts pending payouts.
-            // Confirm on success, mark failed for retry on transfer failure.
-            if (result.settled && result.pendingPayouts && payoutInitialized) {
-              for (const p of result.pendingPayouts) {
-                try {
-                  const transfer = await transferUsdc(
-                    await getUserWalletAddress(p.userId),
-                    p.amount / 1e6,
-                  );
-                  await query(
-                    `update public.payouts set status = 'confirmed', tx_hash = $1, confirmed_at = now()
-                     where id = $2`,
-                    [transfer.txHash, p.payoutId],
-                  );
-                  ws.send(JSON.stringify({
-                    type: 'payout',
-                    userId: p.userId,
-                    amount: p.amount,
-                    txHash: transfer.txHash,
-                  }));
-                } catch (err) {
-                  console.error('[payout] failed for user', p.userId, err.message);
-                  await query(
-                    `update public.payouts set status = 'failed' where id = $1`,
-                    [p.payoutId],
-                  );
-                }
-              }
-            }
+            await processPayouts(result);
 
             await broadcastState(currentGameId, currentUserId);
             break;
@@ -314,49 +287,88 @@ export async function initWs(server, config) {
 
   // Auto game loop: roll the ball after AUTO_ROLL_SECONDS, then auto-settle
   // each round when its voting window expires. Runs independently of clients.
-  // Drive the loop off round status (awaiting_spin / voting) rather than
-  // games.status, which may not exist on older databases.
+  // Driven off round status (games.status may not exist on older databases).
+  let ticking = false;
   async function tick() {
-    if (!dbInitialized) return;
+    if (!dbInitialized || ticking) return;
+    ticking = true;
     try {
-      const games = await query(`select id from public.games`);
-      for (const { id: gameId } of games.rows) {
-        const roundRes = await query(
-          `select id, status, created_at, opened_at from public.rounds
-            where game_id = $1 order by round_number desc limit 1`,
-          [gameId],
-        );
-        const round = roundRes.rows[0];
-        if (!round) continue;
-
-        const now = Date.now();
-
-        if (round.status === 'awaiting_spin' && round.created_at) {
-          const started = new Date(round.created_at).getTime();
-          if (now - started >= AUTO_ROLL_SECONDS * 1000) {
-            await withTransaction(async (client) => {
-              const result = await rollBall(client, gameId);
-              if (result) await broadcastState(gameId);
-            });
-          }
-        } else if (round.status === 'voting' && round.opened_at) {
-          const opened = new Date(round.opened_at).getTime();
-          if (now - opened >= ROUND_SECONDS * 1000) {
-            await withTransaction(async (client) => {
-              const result = await settleRound(client, gameId, false);
-              if (result.settled) await broadcastState(gameId);
-            });
-          }
+      const { rows } = await query(
+        `select distinct on (game_id) game_id, status, created_at, opened_at
+           from public.rounds
+          where status in ('awaiting_spin', 'voting')
+          order by game_id, round_number desc`,
+      );
+      const now = Date.now();
+      for (const round of rows) {
+        try {
+          await tickGame(round, now);
+        } catch (err) {
+          console.error('[tick] game', round.game_id, 'error:', err.message);
         }
       }
     } catch (err) {
       console.error('[tick] error:', err.message);
+    } finally {
+      ticking = false;
     }
   }
 
-  setInterval(tick, 1000);
+  // Commit first, then broadcast, so the snapshot sees the new state.
+  async function tickGame(round, now) {
+    const gameId = round.game_id;
+    if (round.status === 'awaiting_spin' && round.created_at) {
+      if (now - new Date(round.created_at).getTime() < AUTO_ROLL_SECONDS * 1000) return;
+      const result = await withTransaction((client) => rollBall(client, gameId));
+      if (result) await broadcastState(gameId);
+    } else if (round.status === 'voting' && round.opened_at) {
+      if (now - new Date(round.opened_at).getTime() < ROUND_SECONDS * 1000) return;
+      const result = await withTransaction((client) => settleRound(client, gameId, false));
+      if (result.settled) {
+        await processPayouts(result);
+        await broadcastState(gameId);
+      }
+    }
+  }
+
+  const tickTimer = setInterval(tick, 1000);
+  wss.on('close', () => clearInterval(tickTimer));
 
   return wss;
+}
+
+// Payout atomicity: settleRound inserts pending payouts.
+// Confirm on success, mark failed for retry on transfer failure.
+async function processPayouts(result) {
+  if (!result.settled || !result.pendingPayouts || !payoutInitialized) return;
+  for (const p of result.pendingPayouts) {
+    try {
+      const transfer = await transferUsdc(
+        await getUserWalletAddress(p.userId),
+        p.amount / 1e6,
+      );
+      await query(
+        `update public.payouts set status = 'confirmed', tx_hash = $1, confirmed_at = now()
+         where id = $2`,
+        [transfer.txHash, p.payoutId],
+      );
+      const winnerSocket = userSockets.get(p.userId);
+      if (winnerSocket?.readyState === WebSocket.OPEN) {
+        winnerSocket.send(JSON.stringify({
+          type: 'payout',
+          userId: p.userId,
+          amount: p.amount,
+          txHash: transfer.txHash,
+        }));
+      }
+    } catch (err) {
+      console.error('[payout] failed for user', p.userId, err.message);
+      await query(
+        `update public.payouts set status = 'failed' where id = $1`,
+        [p.payoutId],
+      );
+    }
+  }
 }
 
 async function broadcastState(gameId, excludingUserId = null) {
