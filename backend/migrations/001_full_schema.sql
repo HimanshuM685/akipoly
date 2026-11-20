@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS public.bets (
     game_id TEXT NOT NULL,
     round_id TEXT NOT NULL,
     user_id TEXT NOT NULL,
-    side TEXT NOT NULL,
+    direction TEXT NOT NULL,
     amount BIGINT NOT NULL,
     settled BOOLEAN DEFAULT false,
     claimable BIGINT DEFAULT 0,
