@@ -303,6 +303,9 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
     return <p className="room__loading">{connecting ? 'Connecting…' : 'waking the table…'}</p>;
   }
 
+  console.log('[LiveGame] state:', JSON.stringify(state, null, 2));
+  console.log('[livegame] isHost:', state.me.is_host, '| host_user_id:', state.lobby.host_user_id, '| me.user_id:', state.me.user_id);
+
   return (
     <div className={`game ${resultFlash ? `game--flash-${resultFlash}` : ''} ${connecting ? 'connecting' : ''}`}>
       {toasts.length > 0 && (
