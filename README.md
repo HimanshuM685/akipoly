@@ -43,36 +43,74 @@ pooler hostname (certificate is still validated). On Vercel set `DATABASE_URL`
 to the normal hostname URL and skip the `DATABASE_TLS_SERVERNAME` override —
 that file (`.env`) is never committed either way.
 
-## /play (Privy auth, Arc Testnet)
+## /play — the game (Privy + real Arc USDC)
 
-`/play` is a React island (Astro `@astrojs/react`, `client:only="react"`)
-gated by [Privy](https://docs.privy.io). Sign in with email/social/external
-wallet; a Privy-embedded wallet is created automatically on first sign in
-(`createOnLogin: 'users-without-wallets'`) on **Arc Testnet** (chain id
-5042002, native gas USDC, `viem/chains` provides `arcTestnet`). After login the
-page shows the wallet address (copy), live USDC balance read straight from the
-Arc RPC, the Arc explorer link, and sign out.
+`/play` is a React island gated by [Privy](https://docs.privy.io). First sign in
+creates an embedded wallet on Arc. All game state lives in the WebSocket game
+server in `backend/` (single authority for lobbies and games); the Astro site
+only serves pages and the waitlist endpoint.
 
-Required env vars (copy `.env.example` to `.env`, which is git-ignored):
+**Rules.** Anyone opens a table with a USDC buy-in; others join (max 10).
+Pressing **Ready** pays the buy-in from the player's wallet to the treasury; the
+server verifies the transfer on-chain. When ≥2 players are seated and all are
+ready, a 3 s countdown starts the game. An opening ball rolls, then each round
+every player still standing calls whether the next ball (00–16) is **higher or
+lower** — optionally backing the call with a USDC side bet (pari-mutuel per
+round). Wrong call or no call = out; same ball = push. Last player standing
+takes the pot (minus `HOUSE_FEE_BPS`). Balls are provably fair: the server
+publishes `sha256(seed)` before calls close and reveals the seed after.
+
+**Network toggle.** `ARC_NETWORK` (server) and `PUBLIC_ARC_NETWORK` (site) pick
+`testnet` (chain 5042002, free USDC from https://faucet.circle.com/) or
+`mainnet` (chain 5042). USDC is the ERC-20 interface at
+`0x3600000000000000000000000000000000000000` (6 decimals) on both.
+
+Site env (`.env`, see `.env.example`): `PUBLIC_PRIVY_APP_ID`, `PUBLIC_WS_URL`,
+`PUBLIC_ARC_NETWORK`. In the Privy dashboard, **enable identity tokens** — the
+socket authenticates with them and reads the embedded wallet from them.
+
+### Game server (`backend/`)
+
+TypeScript, Node ≥20, Postgres (Neon pooled endpoint), viem.
 
 ```sh
-PUBLIC_PRIVY_APP_ID=cmwn8o8ul00cg0gjwj5ly4uex   # your app id — public by design
+cd backend
+cp .env.example .env          # fill DATABASE_URL, PRIVY_APP_ID, TREASURY_PRIVATE_KEY…
+npm ci
+npm run migrate:dev           # 001_init DROPS the old game tables (keeps app_users)
+npm run dev                   # ws://localhost:8081, /health, /ready
+npm test                      # rule + fairness unit tests
+# production: npm run build && npm run migrate && pm2 reload ecosystem.config.cjs
 ```
 
-**The Privy App Secret is configuration we will never touch.** It must not
-appear in `.env`, in source, or in any bundle; it belongs in a server-side
-backend when one exists. (The owner pasted it once in chat — treat it as
-compromised and rotate it in the Privy dashboard.)
+```
+backend/src/shared/        protocol (zod) + Arc network table, imported by the site too
+backend/src/config/env.ts  validated env (fails fast)
+backend/src/db/            pool (error-safe), migration runner, read-model views
+backend/src/domain/        pure rules + provably-fair ball (unit tested)
+backend/src/chain/usdc.ts  verify incoming USDC, sign/broadcast payouts
+backend/src/services/      lobby + game state machines, payout queue/worker
+backend/src/scheduler/     advances due rounds/countdowns (SKIP LOCKED, multi-instance safe)
+backend/src/ws/            transport (rate limit, heartbeat), router, per-user push hub
+```
 
+Payouts are written in the same transaction that settles a round, then sent by
+one worker that signs each transfer before broadcasting it (a crash can only
+rebroadcast the same tx, never pay twice). Payouts above `MAX_AUTO_PAYOUT_USDC`
+or that never land are marked `held` for manual review. The treasury is a
+custodial hot wallet: keep it small and sweep it.
 
 ## Structure
 
 ```
 src/pages/index.astro          the page — one screen, one action
 src/pages/docs.astro           /docs — the "what is this thing" explainer
-src/pages/play.astro           /play — Privy-gated Arc Testnet minigame seat
+src/pages/play.astro           /play — Privy-gated game
 src/pages/api/waitlist.ts      POST → insert into Neon `waitlist` (serverless)
-src/components/Dashboard.tsx    the /play island (PrivyProvider, wallet, USDC balance)
+src/components/Dashboard.tsx    the /play island (Privy, socket provider, screens)
+src/components/dashboard/       lobby list, lobby room, live game, wallet, career
+src/features/game/             socket client, USDC payment hook, ball reel, pick panel
+src/lib/arc.ts                 Arc network config for the site (PUBLIC_ARC_NETWORK)
 src/components/WaitlistForm.astro  email form + success state + client script
 src/components/CookieBanner.astro  one-line cookie note (localStorage ack)
 src/components/Waterwave.astro     the rising-tide page transition between / and /docs

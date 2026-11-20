@@ -1,30 +1,24 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useApiFetch } from '../../lib/client-api';
-
-interface CareerGame {
-  id: string;
-  started_at: string | null;
-  ended_at: string | null;
-  lobby_name: string;
-  placement: number | null;
-  points: number;
-  eliminated_round: number | null;
-}
+import type { CareerEntry } from '../../../backend/src/shared/protocol';
+import { useGameSocket } from '../../features/game/GameSocket';
+import { formatUsdc } from '../../lib/arc';
 
 export default function CareerPanel() {
-  const apiFetch = useApiFetch();
-  const [games, setGames] = useState<CareerGame[] | null>(null);
+  const { request, status } = useGameSocket();
+  const [games, setGames] = useState<CareerEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(() => {
     setError(null);
     setGames(null);
-    apiFetch<{ games: CareerGame[] }>('/api/career')
-      .then((data) => setGames(data.games ?? []))
+    request<{ games: CareerEntry[] }>({ type: 'career.get' })
+      .then((res) => setGames(res.games))
       .catch((err: Error) => setError(`couldn't load career — ${err.message}`));
-  }, [apiFetch]);
+  }, [request]);
 
-  useEffect(load, [load]);
+  useEffect(() => {
+    if (status === 'ready') load();
+  }, [status, load]);
 
   if (error) {
     return (
@@ -37,15 +31,13 @@ export default function CareerPanel() {
     );
   }
 
-  if (!games) {
-    return <p className="career__loading">loading your games…</p>;
-  }
+  if (!games) return <p className="career__loading">loading your games…</p>;
 
   if (games.length === 0) {
     return (
       <div className="career__empty">
         <p className="career__empty-title">no games yet.</p>
-        <p>join or create a lobby — your history will show up here.</p>
+        <p>join or open a table — your history will show up here.</p>
       </div>
     );
   }
@@ -59,20 +51,18 @@ export default function CareerPanel() {
         </button>
       </div>
       <ul className="career__list">
-        {games.map((game) => (
-          <li key={game.id} className="career__row">
+        {games.map((g) => (
+          <li key={g.gameId} className="career__row">
             <span className="career__place">
-              {game.placement === 1 ? '🏆' : game.placement ? `#${game.placement}` : '—'}
+              {g.placement === 1 ? '🏆' : g.placement ? `#${g.placement}` : '—'}
             </span>
             <span className="career__meta">
-              <strong>{game.lobby_name}</strong>
-              {game.ended_at ? (
-                <small>{new Date(game.ended_at).toLocaleDateString()}</small>
-              ) : (
-                <small>in progress</small>
-              )}
+              <strong>{g.lobbyName}</strong>
+              <small>{g.endedAt ? new Date(g.endedAt).toLocaleDateString() : 'in progress'}</small>
             </span>
-            <span className="career__pts">{game.points} pts</span>
+            <span className="career__pts">
+              −{formatUsdc(g.buyIn)} / +{formatUsdc(g.won)} usdc
+            </span>
           </li>
         ))}
       </ul>

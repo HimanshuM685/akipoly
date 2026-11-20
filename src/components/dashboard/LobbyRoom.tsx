@@ -1,139 +1,151 @@
-import { useCallback, useEffect, useState } from 'react';
-import { useApiFetch } from '../../lib/client-api';
-
-interface Seat {
-  user_id: string;
-  display_name: string | null;
-  joined_at: string;
-  is_host: boolean;
-}
-
-interface LobbyState {
-  lobby: {
-    id: string;
-    name: string;
-    max_players: number;
-    status: 'waiting' | 'live' | 'finished' | 'cancelled';
-    current_round: number;
-    host_user_id: string;
-  };
-  seats: Seat[];
-  gameId: string | null;
-  gameEnded: boolean;
-  me: { is_host: boolean; is_seated: boolean };
-}
+import { useState } from 'react';
+import type { LobbyView } from '../../../backend/src/shared/protocol';
+import { useCountdown, useGameSocket } from '../../features/game/GameSocket';
+import { usePayUsdc } from '../../features/game/usePayUsdc';
+import { formatUsdc, network } from '../../lib/arc';
 
 interface Props {
-  lobbyId: string;
-  onDone: () => void;
-  onGameStarted: (gameId: string) => void;
+  lobby: LobbyView;
+  onLeave: () => void;
 }
 
-export default function LobbyRoom({ lobbyId, onDone, onGameStarted }: Props) {
-  const apiFetch = useApiFetch();
-  const [state, setState] = useState<LobbyState | null>(null);
+export default function LobbyRoom({ lobby, onLeave }: Props) {
+  const { status, session, request, clockOffset, toast } = useGameSocket();
+  const pay = usePayUsdc();
+  const [step, setStep] = useState<'idle' | 'paying' | 'verifying' | 'refunding' | 'leaving'>('idle');
   const [error, setError] = useState<string | null>(null);
-  const [starting, setStarting] = useState(false);
-  const [leaving, setLeaving] = useState(false);
+  const startsIn = useCountdown(lobby.status === 'starting' ? lobby.startsAt : null, clockOffset);
 
-  const load = useCallback(() => {
-    apiFetch<LobbyState>(`/api/lobbies/${lobbyId}/state`)
-      .then((data) => {
-        setState(data);
-        if (data.lobby.status === 'live' && data.gameId) onGameStarted(data.gameId);
-      })
-      .catch((err: Error) => setError(err.message));
-  }, [apiFetch, lobbyId, onGameStarted]);
+  const me = session ? lobby.players.find((p) => p.userId === session.userId) : undefined;
+  const readyCount = lobby.players.filter((p) => p.ready).length;
+  const pot = BigInt(lobby.buyIn) * BigInt(readyCount);
+  const open = lobby.status === 'waiting' || lobby.status === 'starting';
+  const busy = step !== 'idle' || status !== 'ready';
 
-  useEffect(() => {
-    load();
-    const timer = window.setInterval(load, 1600);
-    return () => window.clearInterval(timer);
-  }, [load]);
-
-  const startGame = async () => {
-    setStarting(true);
+  const readyUp = async () => {
+    if (!session) return;
     setError(null);
     try {
-      const res = await apiFetch<{ gameId: string }>(`/api/lobbies/${lobbyId}/state`, {
-        method: 'POST',
-      });
-      onGameStarted(res.gameId);
+      setStep('paying');
+      const txHash = await pay(session.treasury, BigInt(lobby.buyIn));
+      setStep('verifying');
+      await request({ type: 'lobby.ready', lobbyId: lobby.id, txHash });
     } catch (err) {
       setError((err as Error).message);
     } finally {
-      setStarting(false);
+      setStep('idle');
     }
   };
 
-  const leaveLobby = async () => {
-    setLeaving(true);
+  const unready = async () => {
+    setError(null);
+    setStep('refunding');
     try {
-      await apiFetch(`/api/lobbies/${lobbyId}/leave`, { method: 'POST' });
-      onDone();
+      await request({ type: 'lobby.unready', lobbyId: lobby.id });
+      toast('buy-in refund is on its way');
     } catch (err) {
       setError((err as Error).message);
-      setLeaving(false);
+    } finally {
+      setStep('idle');
     }
   };
 
-  if (error && !state) {
+  const leave = async () => {
+    setStep('leaving');
+    try {
+      if (me && open) await request({ type: 'lobby.leave', lobbyId: lobby.id });
+      onLeave();
+    } catch (err) {
+      setError((err as Error).message);
+      setStep('idle');
+    }
+  };
+
+  if (lobby.status === 'cancelled') {
     return (
-      <div className="room__error">
-        {error}
-        <button type="button" className="btn dash__btn" onClick={onDone}>back to lobbies</button>
+      <div className="room">
+        <p className="dash__copy">this table closed.</p>
+        <button type="button" className="btn dash__btn" onClick={onLeave}>
+          back to tables
+        </button>
       </div>
     );
   }
 
-  if (!state) {
-    return <p className="room__loading">finding a seat…</p>;
-  }
-
-  const l = state.lobby;
-  const isHost = state.me.is_host;
-  const canStart = isHost && state.seats.length >= 2 && l.status === 'waiting';
-
   return (
     <div className="room">
       <div className="room__head">
-        <h2 className="dash__heading">{l.name}</h2>
-        <span className="room__tag">{l.status}</span>
+        <h2 className="dash__heading">{lobby.name}</h2>
+        <span className="room__tag">{lobby.status === 'starting' ? `starting in ${startsIn}` : lobby.status}</span>
+      </div>
+
+      <div className="room__stakes">
+        <span>
+          buy-in <strong>{formatUsdc(lobby.buyIn)} usdc</strong>
+        </span>
+        <span>
+          pot <strong>{formatUsdc(pot)} usdc</strong>
+        </span>
       </div>
 
       <p className="dash__copy">
-        {isHost
-          ? 'you start the game — the ball rolls on its own after it starts.'
-          : 'the ball rolls on its own once the game starts.'}
+        press ready to pay the buy-in. when everyone is ready the ball starts rolling. call higher or lower each
+        round — wrong call or no call and you&apos;re out. last one standing takes the pot.
       </p>
 
       <ul className="room__seats">
-        {state.seats.map((seat) => (
-          <li key={seat.user_id} className="room__seat">
-            <span className="room__avatar" aria-hidden="true">{(seat.display_name ?? 'A').slice(0, 1).toUpperCase()}</span>
-            <span className="room__seat-name">{seat.display_name ?? 'anonymous'}</span>
-            {seat.is_host && <span className="room__dealer">dealer</span>}
+        {lobby.players.map((p) => (
+          <li key={p.userId} className={`room__seat ${p.ready ? 'room__seat--ready' : ''}`}>
+            <span className="room__avatar" aria-hidden="true">
+              {p.displayName.slice(0, 1).toUpperCase()}
+            </span>
+            <span className="room__seat-name">
+              {p.displayName}
+              {p.userId === session?.userId && ' (you)'}
+            </span>
+            {p.userId === lobby.ownerUserId && <span className="room__badge">host</span>}
+            <span className={`room__ready ${p.ready ? 'room__ready--yes' : ''}`}>{p.ready ? 'ready' : 'not ready'}</span>
           </li>
         ))}
       </ul>
 
+      {lobby.players.length < 2 && <p className="game__hint">waiting for at least one more player…</p>}
+
       <div className="room__actions">
-        {isHost && (
-          <button
-            type="button"
-            className="btn dash__btn"
-            onClick={startGame}
-            disabled={!canStart || starting}
-          >
-            {starting ? 'starting…' : canStart ? 'start game' : 'need at least one other voter'}
+        {me && open && !me.ready && (
+          <button type="button" className="btn btn--lg dash__btn" onClick={() => void readyUp()} disabled={busy}>
+            {step === 'paying'
+              ? 'confirm in wallet…'
+              : step === 'verifying'
+                ? 'verifying payment…'
+                : `ready · pay ${formatUsdc(lobby.buyIn)} usdc`}
           </button>
         )}
-        <button type="button" className="btn room__leave" onClick={leaveLobby} disabled={leaving}>
-          {leaving ? 'leaving…' : isHost ? 'disband lobby' : 'leave lobby'}
+        {me && open && me.ready && (
+          <button type="button" className="btn dash__btn" onClick={() => void unready()} disabled={busy}>
+            {step === 'refunding' ? 'refunding…' : 'not ready · refund me'}
+          </button>
+        )}
+        <button type="button" className="btn room__leave" onClick={() => void leave()} disabled={step !== 'idle'}>
+          {step === 'leaving' ? 'leaving…' : 'leave table'}
         </button>
       </div>
 
-      {error && <p className="lobbies__error" role="alert">{error}</p>}
+      {network.faucetUrl && (
+        <p className="dash__fineprint">
+          need test USDC?{' '}
+          <a href={network.faucetUrl} target="_blank" rel="noopener noreferrer">
+            get some from the Circle faucet ↗
+          </a>{' '}
+          (pick Arc Testnet).
+        </p>
+      )}
+
+      {error && (
+        <p className="lobbies__error" role="alert">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

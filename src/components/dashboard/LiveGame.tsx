@@ -1,441 +1,171 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { usePrivy } from '@privy-io/react-auth';
-
-interface PlayerRow {
-  user_id: string;
-  display_name: string | null;
-  is_host: boolean;
-  is_eliminated: boolean;
-  eliminated_round: number | null;
-  points: number;
-  vote_locked: boolean;
-}
-
-interface GameState {
-  game: { id: string; lobby_id: string; ended: boolean; winner_user_id: string | null };
-  lobby: { id: string; host_user_id: string; name: string; status: string; current_round: number };
-  players: PlayerRow[];
-  round: null | {
-    id: string;
-    number: number;
-    ball: number | null;
-    status: 'awaiting_spin' | 'voting' | 'settled' | 'refunded';
-    opened_at: string;
-    seconds_left: number;
-    rolls_in: number | null;
-    high_pool: number;
-    low_pool: number;
-  };
-  me: {
-    is_host: boolean;
-    is_seated: boolean;
-    is_eliminated: boolean;
-    vote: string | null;
-    needs_name: boolean;
-    my_bet: { direction: string; amount: number } | null;
-    claimable: number;
-  };
-}
+import { useEffect, useRef, useState } from 'react';
+import type { GameView, LobbyView, RoundOutcome } from '../../../backend/src/shared/protocol';
+import { useCountdown, useGameSocket } from '../../features/game/GameSocket';
+import BallReel from '../../features/game/BallReel';
+import PickPanel from '../../features/game/PickPanel';
+import { formatUsdc } from '../../lib/arc';
 
 interface Props {
-  gameId: string;
-  onLobbyLeft: () => void;
+  lobby: LobbyView;
+  game: GameView;
+  onLeave: () => void;
 }
 
-const ballColors: Record<number, string> = {
-  1: '#FFD700',
-  2: '#0000FF',
-  3: '#FF0000',
-  4: '#800080',
-  5: '#FFA500',
-  6: '#008000',
-  7: '#800000',
-  8: '#000000',
-  9: '#FFD700',
-  10: '#0000FF',
-  11: '#FF0000',
-  12: '#800080',
-  13: '#FFA500',
-  14: '#008000',
-  15: '#800000',
-  0: '#FFFFFF',
+const outcomeText: Record<RoundOutcome, string> = {
+  higher: 'higher!',
+  lower: 'lower!',
+  push: 'same ball — push, nobody out.',
+  void: 'everyone missed — round void, nobody out.',
+  opening: 'opening ball.',
 };
 
-export default function LiveGame({ gameId, onLobbyLeft }: Props) {
-  const wsUrl = import.meta.env.PUBLIC_WS_URL ?? 'wss://ws.akipoly.xyz';
-  const { getIdentityToken } = usePrivy();
-  const [state, setState] = useState<GameState | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [intent, setIntent] = useState<'higher' | 'lower' | null>(null);
-  const [betAmount, setBetAmount] = useState('');
-  const [claiming, setClaiming] = useState(false);
-  const [betPending, setBetPending] = useState(false);
-  const [connecting, setConnecting] = useState(true);
-  const [toasts, setToasts] = useState<Array<{ id: number; message: string }>>([]);
-  const prevBallRef = useRef<number | null>(null);
-  const previousStateRef = useRef<GameState | null>(null);
-  const wsRef = useRef<WebSocket | null>(null);
-  const [resultFlash, setResultFlash] = useState<'win' | 'loss' | 'push' | null>(null);
+export default function LiveGame({ lobby, game, onLeave }: Props) {
+  const { session, clockOffset, toast } = useGameSocket();
+  const [flash, setFlash] = useState<'win' | 'loss' | 'push' | null>(null);
+  const prevGame = useRef<GameView | null>(null);
 
-  const round = state?.round ?? null;
-  const ended = state?.game.ended ?? false;
-  const isHost = state?.me.is_host ?? false;
-  const playersLeft = state?.players.filter((p) => !p.is_host && !p.is_eliminated).length ?? 0;
-  const votesIn = state?.players.filter((p) => !p.is_host && p.vote_locked).length ?? 0;
-  const totalPool = round ? round.high_pool + round.low_pool : 0;
-  const clockFromServer = round?.seconds_left ?? 30;
+  const round = game.round;
+  const ended = game.status === 'finished';
+  const secondsLeft = useCountdown(round?.phase === 'betting' ? round.phaseEndsAt : null, clockOffset);
+  const alive = game.players.filter((p) => p.alive);
+  const winner = game.players.find((p) => p.userId === game.winnerUserId);
+  const rollingMs = session?.timing.rollingMs ?? 3500;
 
-  const justSpun = round?.ball != null && prevBallRef.current !== null && prevBallRef.current !== round.ball;
-
-  const lockedIn = state?.me.vote === 'higher' || state?.me.vote === 'lower';
-  const winner = ended && state?.game.winner_user_id
-    ? state.players.find((p) => p.user_id === state.game.winner_user_id)
-    : null;
-
-  const addToast = (message: string) => {
-    const id = Date.now() + Math.random();
-    setToasts((prev) => [...prev, { id, message }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 5000);
-  };
-
-  const send = (message: object) => {
-    const ws = wsRef.current;
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify(message));
-      return Promise.resolve();
-    } else {
-      return new Promise<void>((resolve) => {
-        sendQueue.push({ message, resolve });
-      });
-    }
-  };
-
-  const flushQueue = () => {
-    while (sendQueue.length) {
-      const { message, resolve } = sendQueue.shift()!;
-      const ws = wsRef.current;
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify(message));
-      }
-      resolve();
-    }
-  };
-
-  const connect = useCallback(async () => {
-    const ws = new WebSocket(wsUrl);
-    wsRef.current = ws;
-
-    ws.onopen = () => {
-      console.log('[ws] connected');
-      setConnecting(false);
-      // join_game and get_state are allowed before auth; re-fetch on auth_ok for per-user fields.
-      ws.send(JSON.stringify({ type: 'join_game', gameId }));
-      ws.send(JSON.stringify({ type: 'get_state', gameId }));
-      getIdentityToken()
-        .then((token) => {
-          if (token && ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: 'auth', token }));
-          } else if (!token) {
-            console.error('[ws] No identity token from Privy');
-            addToast('Authentication failed: could not get identity token');
-          }
-        })
-        .catch((err) => {
-          console.error('[ws] auth token error:', err.message);
-          addToast('Authentication failed');
-        });
-    };
-
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-
-        switch (data.type) {
-          case 'auth_ok':
-            console.log('[ws] authenticated');
-            ws.send(JSON.stringify({ type: 'get_state', gameId }));
-            flushQueue();
-            break;
-          case 'state':
-            setState(data.snapshot);
-            previousStateRef.current = data.snapshot;
-            if (data.snapshot && previousStateRef.current) {
-              const prevEliminated = new Set(
-                previousStateRef.current.players.filter((p) => p.is_eliminated).map((p) => p.user_id),
-              );
-              const newlyEliminated = data.snapshot.players.filter(
-                (p) => p.is_eliminated && !prevEliminated.has(p.user_id),
-              );
-              for (const p of newlyEliminated) {
-                const prevPlayer = previousStateRef.current.players.find((x) => x.user_id === p.user_id);
-                const name = p.display_name ?? 'A player';
-                let reason = "didn't vote in time";
-                if (prevPlayer?.vote_locked) {
-                  reason = 'guessed wrong';
-                }
-                addToast(`${name} was eliminated — ${reason}.`);
-              }
-            }
-            break;
-          case 'toast':
-            addToast(data.message);
-            break;
-          case 'payout':
-            addToast(`You won ${data.amount} USDC! Tx: ${data.txHash}`);
-            break;
-          case 'error':
-            addToast(data.message);
-            break;
-          default:
-            console.log('[ws] unhandled:', data.type, data);
-        }
-      } catch (err) {
-        console.error('[ws] parse error:', err);
-      }
-    };
-
-    ws.onclose = () => {
-      console.log('[ws] disconnected, reconnecting in 3s...');
-      wsRef.current = null;
-      setConnecting(true);
-      setTimeout(connect, 3000);
-    };
-
-    ws.onerror = (err) => {
-      console.error('[ws] error:', err);
-      setError('Connection error. Retrying...');
-    };
-  }, [gameId, wsUrl, getIdentityToken]);
-
+  // Round results: eliminations toasts + a flash for my own outcome.
   useEffect(() => {
-    connect();
-    return () => {
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
-    };
-  }, [connect]);
-
-  const placeBet = async () => {
-    if (!round) return;
-    if (!intent || !betAmount) return;
-    const amt = parseInt(betAmount, 10);
-    if (isNaN(amt) || amt <= 0) return;
-
-    setBetPending(true);
-    try {
-      await send({
-        type: 'bet',
-        gameId,
-        round_id: round.id,
-        direction: intent,
-        amount: betAmount,
-      });
-      setBetAmount('');
-    } catch (err) {
-      addToast(`Bet failed: ${(err as Error).message}`);
-    } finally {
-      setBetPending(false);
+    const before = prevGame.current;
+    prevGame.current = game;
+    const latest = game.history[0];
+    if (!before || !latest || before.history[0]?.number === latest.number) return;
+    const wasAlive = new Set(before.players.filter((p) => p.alive).map((p) => p.userId));
+    for (const p of game.players) {
+      if (!p.alive && wasAlive.has(p.userId)) toast(`${p.displayName} is out.`);
     }
-  };
+    if (latest.outcome === 'opening') return;
+    const meBefore = before.me;
+    if (!meBefore?.alive) return;
+    if (latest.outcome === 'push' || latest.outcome === 'void') setFlash('push');
+    else setFlash(game.me?.alive ? 'win' : 'loss');
+    const t = window.setTimeout(() => setFlash(null), 900);
+    return () => window.clearTimeout(t);
+  }, [game, toast]);
 
-  const lockIn = async () => {
-    if (!intent || lockedIn) return;
-    try {
-      await send({ type: 'vote', gameId, choice: intent });
-    } catch (err) {
-      addToast(`Vote failed: ${(err as Error).message}`);
-    }
-  };
+  const ballLabel = (() => {
+    if (!round) return '';
+    const latest = game.history[0];
+    const last = latest ? `${outcomeText[latest.outcome]} ` : '';
+    if (round.phase === 'betting') return `${last}next ball: higher or lower than ${round.prevBall}?`;
+    if (round.phase === 'settled' && latest) return `rolled ${latest.ball} — ${outcomeText[latest.outcome]}`;
+    return '';
+  })();
 
-  const claim = async () => {
-    setClaiming(true);
-    try {
-      await send({ type: 'claim', gameId });
-    } catch (err) {
-      addToast(`Claim failed: ${(err as Error).message}`);
-    } finally {
-      setClaiming(false);
-    }
-  };
-
-  if (error && !state) {
-    return (
-      <div className="room__error">
-        {error}
-        <button type="button" className="btn dash__btn" onClick={onLobbyLeft}>
-          back to lobbies
-        </button>
-      </div>
-    );
-  }
-
-  if (!state) {
-    return <p className="room__loading">{connecting ? 'Connecting…' : 'waking the table…'}</p>;
-  }
+  const ballValue = round ? (round.phase === 'betting' ? round.prevBall : round.ball) : null;
 
   return (
-    <div className={`game ${resultFlash ? `game--flash-${resultFlash}` : ''} ${connecting ? 'connecting' : ''}`}>
-      {toasts.length > 0 && (
-        <div className="toasts">
-          {toasts.map((t) => (
-            <div key={t.id} className="toast">
-              {t.message}
-            </div>
-          ))}
-        </div>
-      )}
+    <div className={`game ${flash ? `game--flash-${flash}` : ''}`}>
       <div className="game__header">
-        <h2 className="dash__heading">{state.lobby.name}</h2>
-        <span className="game__stat">round {round?.number ?? state.lobby.current_round}</span>
-        <span className="game__stat">{playersLeft} standing</span>
+        <h2 className="dash__heading">{lobby.name}</h2>
+        <span className="game__stat">round {round?.number ?? 0}</span>
+        <span className="game__stat">{alive.length} standing</span>
+        <span className="game__stat">pot {formatUsdc(game.pot)} usdc</span>
       </div>
 
-      {round?.ball != null && (
-        <div
-          className={`game__ball ${justSpun ? 'game__ball--spin' : ''}`}
-          style={{
-            backgroundColor: ballColors[round.ball] ?? '#171717',
-            color: round.ball === 8 ? '#FFFDF2' : '#171717',
-          }}
-        >
-          {round.ball}
-        </div>
-      )}
-
       {round && (
-        <div className="game__pools">
-          <span className="game__pool">HIGH: {round.high_pool}</span>
-          <span className="game__pool">LOW: {round.low_pool}</span>
-          <span className="game__pool">Total: {totalPool}</span>
-        </div>
+        <BallReel
+          value={ballValue}
+          rolling={round.phase === 'rolling'}
+          landAt={new Date(round.phaseEndsAt).getTime()}
+          rollingMs={rollingMs}
+          clockOffset={clockOffset}
+          label={ballLabel}
+        />
       )}
 
-      {!ended && round?.status === 'awaiting_spin' && (
-        <p className="game__hint">ball rolls in {round.rolls_in ?? 0}s…</p>
-      )}
-
-      {!ended && round?.status === 'voting' && (
+      {!ended && round?.phase === 'betting' && (
         <>
-          <p className={`game__clock ${clockFromServer <= 5 && clockFromServer > 0 ? 'game__clock--urgent' : ''}`} aria-label="Seconds left to lock in">{clockFromServer}s</p>
-          {isHost ? (
-            <p className="game__hint">players voting… {votesIn}/{playersLeft} locked in</p>
-          ) : state.me.is_eliminated ? (
+          <p
+            className={`game__clock ${secondsLeft <= 5 && secondsLeft > 0 ? 'game__clock--urgent' : ''}`}
+            aria-label="Seconds left to call"
+          >
+            {secondsLeft}s · {round.picksIn}/{alive.length} called
+          </p>
+          {!game.me ? (
+            <p className="game__hint">you&apos;re watching this table.</p>
+          ) : !game.me.alive ? (
             <p className="game__hint game__hint--out">you are out — spectate till the end.</p>
-          ) : state.me.my_bet ? (
+          ) : game.me.pick ? (
             <p className="game__locked">
-              locked in: <strong>{state.me.my_bet.direction}</strong> {state.me.my_bet.amount} — waiting for the spin
+              locked in: <strong>{game.me.pick.direction}</strong>
+              {BigInt(game.me.pick.sideBet) > 0n && ` · ${formatUsdc(game.me.pick.sideBet)} usdc side bet`}
             </p>
           ) : (
-            <>
-              <div className="game__bet" role="group" aria-label="Place your bet">
-                <label>Amount</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={betAmount}
-                  onChange={(e) => setBetAmount(e.target.value)}
-                  placeholder="e.g. 10"
-                  aria-label="Bet amount"
-                />
-                <div className="game__choice">
-                  <button
-                    type="button"
-                    aria-pressed={intent === 'higher'}
-                    className={`game__choice game__choice--higher ${intent === 'higher' ? 'game__choice--active' : ''}`}
-                    onClick={() => setIntent('higher')}
-                    disabled={!betAmount || parseInt(betAmount, 10) <= 0}
-                  >
-                    higher
-                  </button>
-                  <button
-                    type="button"
-                    aria-pressed={intent === 'lower'}
-                    className={`game__choice game__choice--lower ${intent === 'lower' ? 'game__choice--active' : ''}`}
-                    onClick={() => setIntent('lower')}
-                    disabled={!betAmount || parseInt(betAmount, 10) <= 0}
-                  >
-                    lower
-                  </button>
-                </div>
-                <button
-                  type="button"
-                  className="btn btn--lg game__lock"
-                  disabled={!intent || !betAmount || parseInt(betAmount, 10) <= 0 || betPending}
-                  onClick={placeBet}
-                >
-                  {betPending ? 'placing…' : 'place bet'}
-                </button>
-              </div>
-            </>
+            <PickPanel key={round.number} game={game} />
           )}
         </>
       )}
 
+      {game.history.length > 0 && (
+        <ol className="game__history" aria-label="Recent balls">
+          {game.history.map((h) => (
+            <li key={h.number} className={`game__history-item game__history-item--${h.outcome}`}>
+              <span>{String(h.ball).padStart(2, '0')}</span>
+              <small>{h.outcome === 'opening' ? 'start' : h.outcome}</small>
+            </li>
+          ))}
+        </ol>
+      )}
+
       <ul className="game__roster">
-        {state.players.map((player) => (
+        {game.players.map((p) => (
           <li
-            key={player.user_id}
-            className={`game__seat ${player.is_eliminated ? 'game__seat--out' : ''} ${player.is_host ? 'game__seat--host' : ''} ${ended && state.game.winner_user_id === player.user_id ? 'game__seat--winner' : ''}`}
+            key={p.userId}
+            className={`game__seat ${p.alive ? '' : 'game__seat--out'} ${p.userId === game.winnerUserId ? 'game__seat--winner' : ''}`}
           >
             <span className="game__seat-avatar" aria-hidden="true">
-              {(player.display_name ?? 'A').slice(0, 1).toUpperCase()}
+              {p.displayName.slice(0, 1).toUpperCase()}
             </span>
-            <span className="game__seat-name">{player.display_name ?? 'anonymous'}</span>
-            {player.is_host && <span className="room__dealer">dealer</span>}
-            {player.is_eliminated && <span className="game__out">out</span>}
-            {!player.is_eliminated && !player.is_host && (
-              <span className="game__seat-pts">{player.points} pts</span>
+            <span className="game__seat-name">
+              {p.displayName}
+              {p.userId === session?.userId && ' (you)'}
+            </span>
+            {p.alive && round?.phase === 'betting' && (
+              <span className={`game__called ${p.picked ? 'game__called--yes' : ''}`}>{p.picked ? 'called' : '…'}</span>
             )}
-            {ended && state.game.winner_user_id === player.user_id && (
-              <span className="game__crown">👑</span>
-            )}
+            {!p.alive && <span className="game__out">out r{p.eliminatedRound}</span>}
+            {p.userId === game.winnerUserId && <span className="game__crown">👑</span>}
           </li>
         ))}
       </ul>
 
-      {state.me.claimable > 0 && !ended && (
-        <div className="game__claim">
-          <p className="game__hint">you have {state.me.claimable} claimable</p>
-          <button
-            type="button"
-            className="btn dash__btn"
-            onClick={claim}
-            disabled={claiming}
-          >
-            {claiming ? 'claiming…' : 'claim winnings'}
-          </button>
-        </div>
+      {round && (
+        <details className="game__fair">
+          <summary>provably fair</summary>
+          <p>
+            round {round.number} commitment: <code>{round.seedHash}</code>
+          </p>
+          {round.seed && (
+            <p>
+              seed: <code>{round.seed}</code>
+            </p>
+          )}
+          <p>ball = uint64(HMAC-SHA256(seed, &quot;gameId:round&quot;)[0..8]) mod 17 · gameId {game.id}</p>
+        </details>
       )}
 
       {ended && (
         <div className="game__over" role="status">
           <p className="game__over-title">game over.</p>
           <p className="game__over-winner">
-            {winner ? `${winner.display_name ?? 'someone'} has won.` : 'nobody left standing.'}
+            {winner
+              ? `${winner.displayName} takes ${formatUsdc(BigInt(game.pot) - BigInt(game.fee))} usdc.`
+              : 'no single winner — the pot was split.'}
           </p>
-          {state.me.claimable > 0 && (
-            <>
-              <p className="game__hint">you have {state.me.claimable} claimable</p>
-              <button
-                type="button"
-                className="btn dash__btn"
-                onClick={claim}
-                disabled={claiming}
-              >
-                {claiming ? 'claiming…' : 'claim winnings'}
-              </button>
-            </>
-          )}
-          <button type="button" className="btn dash__btn" onClick={onLobbyLeft}>
-            back to lobbies
+          {winner?.userId === session?.userId && <p className="game__hint">payout is on its way to your wallet.</p>}
+          <button type="button" className="btn dash__btn" onClick={onLeave}>
+            back to tables
           </button>
         </div>
       )}
-
-      {error && <p className="lobbies__error" role="alert">{error}</p>}
     </div>
   );
 }
