@@ -281,6 +281,11 @@ export function initWs(server, config) {
       }
 
       if (!authenticated) {
+        // Allow join_game and get_state without auth - they are read-only
+        if (msg.type === 'join_game' || msg.type === 'get_state') {
+          await handleMessage(msg);
+          return;
+        }
         // Queue messages sent before auth; reject unauthenticated game actions.
         const queue = socketQueues.get(ws) ?? [];
         queue.push(msg);

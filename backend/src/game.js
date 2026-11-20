@@ -102,7 +102,7 @@ export async function snapshotGame(client, gameId, meUserId) {
 
   const votesRes = roundRow
     ? await client.query(
-        `select user_id, side from public.bets where round_id = $1 and settled = false`,
+        `select user_id, direction as side from public.bets where round_id = $1 and settled = false`,
         [roundRow.id],
       )
     : { rows: [] };
@@ -110,8 +110,8 @@ export async function snapshotGame(client, gameId, meUserId) {
 
   const betsRes = roundRow
     ? await client.query(
-        `select user_id, side, amount from public.bets where round_id = $1 and settled = false`,
-        [round.id],
+        `select user_id, direction as side, amount from public.bets where round_id = $1 and settled = false`,
+        [roundRow.id],
       )
     : { rows: [] };
   const bets = new Map(betsRes.rows.map((r) => [r.user_id, { side: r.side, amount: parseInt(r.amount, 10) }]));
