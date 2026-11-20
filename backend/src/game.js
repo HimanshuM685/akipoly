@@ -93,7 +93,7 @@ export async function snapshotGame(client, gameId, meUserId) {
   const results = new Map(resultsRes.rows.map((r) => [r.user_id, r]));
 
   const roundRes = await client.query(
-    `select id, round_number, ball, status, opened_at, coalesce(high_pool, 0) as high_pool, coalesce(low_pool, 0) as low_pool
+    `select id, round_number, ball, status, created_at, opened_at, coalesce(high_pool, 0) as high_pool, coalesce(low_pool, 0) as low_pool
        from public.rounds where game_id = $1
       order by round_number desc limit 1`,
     [gameId],
@@ -146,9 +146,14 @@ export async function snapshotGame(client, gameId, meUserId) {
   const myBet = meUserId ? bets.get(meUserId) ?? null : null;
   const myClaimable = meUserId ? claims.get(meUserId) ?? 0 : 0;
 
+  const now = Date.now();
   const secondsLeft = roundRow
-    ? Math.max(0, ROUND_SECONDS - Math.floor((Date.now() - new Date(roundRow.opened_at).getTime()) / 1000))
+    ? Math.max(0, ROUND_SECONDS - Math.floor((now - new Date(roundRow.opened_at).getTime()) / 1000))
     : 0;
+  // Seconds until the ball rolls on its own while awaiting spin.
+  const rollsIn = roundRow && roundRow.status === 'awaiting_spin' && roundRow.created_at
+    ? Math.max(0, AUTO_ROLL_SECONDS - Math.floor((now - new Date(roundRow.created_at).getTime()) / 1000))
+    : null;
 
   return {
     game: { id: g.id, lobby_id: g.lobby_id, ended: Boolean(g.ended), winner_user_id: g.winner_user_id ?? null },
@@ -162,6 +167,7 @@ export async function snapshotGame(client, gameId, meUserId) {
           status: roundRow.status,
           opened_at: roundRow.opened_at,
           seconds_left: secondsLeft,
+          rolls_in: rollsIn,
           high_pool: roundRow.high_pool,
           low_pool: roundRow.low_pool,
         }
@@ -176,6 +182,29 @@ export async function snapshotGame(client, gameId, meUserId) {
       claimable: myClaimable,
     },
   };
+}
+
+/**
+ * Roll the ball for a live round awaiting spin. Called by the auto ticker,
+ * not by the host. Returns null if the round is not awaiting spin.
+ */
+export async function rollBall(client, gameId) {
+  const roundRes = await client.query(
+    `select id, round_number from public.rounds
+      where game_id = $1 order by round_number desc limit 1 for update`,
+    [gameId],
+  );
+  const round = roundRes.rows[0];
+  if (!round || round.status !== 'awaiting_spin') return null;
+
+  const ball = randomBall();
+  await client.query(
+    `update public.rounds
+        set ball = $1, status = 'voting', opened_at = now()
+      where id = $2`,
+    [ball, round.id],
+  );
+  return { ball, round: round.round_number };
 }
 
 /**

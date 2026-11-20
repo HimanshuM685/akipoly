@@ -103,8 +103,8 @@ export default function LobbyRoom({ lobbyId, onDone, onGameStarted }: Props) {
 
       <p className="dash__copy">
         {isHost
-          ? 'you are the host-spinner. everyone else votes — you never do.'
-          : 'waiting for the host to spin the ball.'}
+          ? 'you start the game — the ball rolls on its own after it starts.'
+          : 'the ball rolls on its own once the game starts.'}
       </p>
 
       <ul className="room__seats">

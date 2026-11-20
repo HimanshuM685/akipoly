@@ -22,6 +22,7 @@ interface GameState {
     status: 'awaiting_spin' | 'voting' | 'settled' | 'refunded';
     opened_at: string;
     seconds_left: number;
+    rolls_in: number | null;
     high_pool: number;
     low_pool: number;
   };
@@ -42,7 +43,7 @@ interface Props {
 }
 
 const ballColors: Record<number, string> = {
-  1: '#FFFD700',
+  1: '#FFD700',
   2: '#0000FF',
   3: '#FF0000',
   4: '#800080',
@@ -67,11 +68,11 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [intent, setIntent] = useState<'higher' | 'lower' | null>(null);
   const [betAmount, setBetAmount] = useState('');
-  const [spinning, setSpinning] = useState(false);
-  const [respawing, setRespawing] = useState(false);
   const [claiming, setClaiming] = useState(false);
-  const [toasts, setToasts] = useState<Array<{ id: number; message: string }>>([]);
+  const [betPending, setBetPending] = useState(false);
+  const [authenticated, setAuthenticated] = useState(false);
   const [connecting, setConnecting] = useState(true);
+  const [toasts, setToasts] = useState<Array<{ id: number; message: string }>>([]);
   const prevBallRef = useRef<number | null>(null);
   const previousStateRef = useRef<GameState | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
@@ -130,12 +131,14 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
     ws.onopen = () => {
       console.log('[ws] connected');
       setConnecting(false);
+      // Send join_game immediately - doesn't need auth
       ws.send(JSON.stringify({ type: 'join_game', gameId }));
-      ws.send(JSON.stringify({ type: 'get_state', gameId }));
+      // Get state AFTER auth - needs userId
       getIdentityToken()
         .then((token) => {
           if (token && ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({ type: 'auth', token }));
+            ws.send(JSON.stringify({ type: 'get_state', gameId }));
           } else if (!token) {
             console.error('[ws] No identity token from Privy');
             addToast('Authentication failed: could not get identity token');
@@ -218,17 +221,6 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
     };
   }, [connect]);
 
-  const spin = async () => {
-    setSpinning(true);
-    try {
-      await send({ type: 'spin', gameId });
-    } catch (err) {
-      addToast(`Spin failed: ${(err as Error).message}`);
-    } finally {
-      setSpinning(false);
-    }
-  };
-
   const placeBet = async () => {
     if (!round) return;
     if (!intent || !betAmount) return;
@@ -258,17 +250,6 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
       await send({ type: 'vote', gameId, choice: intent });
     } catch (err) {
       addToast(`Vote failed: ${(err as Error).message}`);
-    }
-  };
-
-  const respin = async () => {
-    setRespawing(true);
-    try {
-      await send({ type: 'settle', gameId, force: true });
-    } catch (err) {
-      addToast(`Respin failed: ${(err as Error).message}`);
-    } finally {
-      setRespawing(false);
     }
   };
 
@@ -336,37 +317,14 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
       )}
 
       {!ended && round?.status === 'awaiting_spin' && (
-        isHost ? (
-          <button
-            type="button"
-            className="btn btn--lg game__spin"
-            onClick={spin}
-            disabled={spinning}
-          >
-            {spinning ? 'spinning…' : 'spin the ball'}
-          </button>
-        ) : (
-          <p className="game__hint">waiting for the host to spin the ball…</p>
-        )
+        <p className="game__hint">ball rolls in {round.rolls_in ?? 0}s…</p>
       )}
 
       {!ended && round?.status === 'voting' && (
         <>
           <p className={`game__clock ${clockFromServer <= 5 && clockFromServer > 0 ? 'game__clock--urgent' : ''}`} aria-label="Seconds left to lock in">{clockFromServer}s</p>
           {isHost ? (
-            <div className="game__btn-row">
-              <p className="game__hint">
-                players voting… {votesIn}/{playersLeft} locked in
-              </p>
-              <button
-                type="button"
-                className="btn dash__btn"
-                onClick={respin}
-                disabled={respawing}
-              >
-                {respawing ? 'respinning…' : 'respin the ball'}
-              </button>
-            </div>
+            <p className="game__hint">players voting… {votesIn}/{playersLeft} locked in</p>
           ) : state.me.is_eliminated ? (
             <p className="game__hint game__hint--out">you are out — spectate till the end.</p>
           ) : state.me.my_bet ? (

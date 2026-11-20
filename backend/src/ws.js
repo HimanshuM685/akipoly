@@ -3,7 +3,8 @@ import { initAuth, verifyPrivyToken, getAppId } from './auth.js';
 import { initDb, withTransaction, query } from './db.js';
 import {
   snapshotGame,
-  spin,
+  ROUND_SECONDS,
+  rollBall,
   placeBet,
   settleRound,
   claimWinnings,
@@ -17,6 +18,9 @@ const socketUserId = new Map(); // WebSocket -> userId
 const socketQueues = new Map(); // WebSocket -> array of messages sent before auth
 const messageCache = new Map(); // `${userId}:${message_id}` -> expiry timestamp
 const MESSAGE_TTL_MS = 5 * 60 * 1000;
+
+// Seconds after a round enters awaiting_spin before the ball rolls on its own.
+export const AUTO_ROLL_SECONDS = 5;
 
 let dbInitialized = false;
 let authInitialized = false;
@@ -53,7 +57,7 @@ async function assertSeated(gameId, userId) {
   if (res.rowCount === 0) throw new Error('Not seated in this game');
 }
 
-export function initWs(server, config) {
+export async function initWs(server, config) {
   const { databaseUrl, privyAppId, arcRpcUrl, usdcContract, opPrivateKey, opAddress } = config;
 
   if (databaseUrl) {
@@ -61,6 +65,10 @@ export function initWs(server, config) {
       initDb(databaseUrl);
       dbInitialized = true;
       console.log('[ws] Database initialized');
+      // Ensure rounds.created_at exists for the auto-roll ticker on existing DBs.
+      await query(
+        `alter table public.rounds add column if not exists created_at timestamptz default now()`,
+      );
     } catch (err) {
       console.error('[ws] Database init failed:', err.message);
     }
@@ -149,17 +157,6 @@ export function initWs(server, config) {
             }
             currentGameId = null;
             break;
-
-          case 'spin': {
-            if (!currentGameId) break;
-            await assertSeated(currentGameId, currentUserId);
-            const result = await withTransaction(async (client) => {
-              return await spin(client, currentGameId, currentUserId);
-            });
-            ws.send(JSON.stringify({ type: 'spin_result', ...result }));
-            await broadcastState(currentGameId, currentUserId);
-            break;
-          }
 
           case 'bet': {
             if (!currentGameId || !msg.roundId || !msg.side || !msg.amount) break;
@@ -316,6 +313,50 @@ export function initWs(server, config) {
       console.error('[ws] socket error:', err);
     });
   });
+
+  // Auto game loop: roll the ball after AUTO_ROLL_SECONDS, then auto-settle
+  // each round when its voting window expires. Runs independently of clients.
+  async function tick() {
+    if (!dbInitialized) return;
+    try {
+      const games = await query(
+        `select id from public.games where status = 'live'`,
+      );
+      for (const { id: gameId } of games.rows) {
+        const roundRes = await query(
+          `select id, status, created_at, opened_at from public.rounds
+            where game_id = $1 order by round_number desc limit 1`,
+          [gameId],
+        );
+        const round = roundRes.rows[0];
+        if (!round) continue;
+
+        const now = Date.now();
+
+        if (round.status === 'awaiting_spin' && round.created_at) {
+          const started = new Date(round.created_at).getTime();
+          if (now - started >= AUTO_ROLL_SECONDS * 1000) {
+            await withTransaction(async (client) => {
+              const result = await rollBall(client, gameId);
+              if (result) await broadcastState(gameId);
+            });
+          }
+        } else if (round.status === 'voting' && round.opened_at) {
+          const opened = new Date(round.opened_at).getTime();
+          if (now - opened >= ROUND_SECONDS * 1000) {
+            await withTransaction(async (client) => {
+              const result = await settleRound(client, gameId, false);
+              if (result.settled) await broadcastState(gameId);
+            });
+          }
+        }
+      }
+    } catch (err) {
+      console.error('[tick] error:', err.message);
+    }
+  }
+
+  setInterval(tick, 1000);
 
   return wss;
 }

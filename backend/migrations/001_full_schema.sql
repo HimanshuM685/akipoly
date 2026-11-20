@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS public.rounds (
     round_number INTEGER NOT NULL,
     ball INTEGER,
     status TEXT DEFAULT 'awaiting_spin',
+    created_at TIMESTAMPTZ DEFAULT now(),
     opened_at TIMESTAMPTZ,
     closed_at TIMESTAMPTZ,
     high_pool BIGINT DEFAULT 0,
