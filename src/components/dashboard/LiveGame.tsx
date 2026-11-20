@@ -72,6 +72,7 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
   const [claiming, setClaiming] = useState(false);
   const [toasts, setToasts] = useState<Array<{ id: number; message: string }>>([]);
   const [connecting, setConnecting] = useState(true);
+  const [connecting, setConnecting] = useState(true);
   const prevBallRef = useRef<number | null>(null);
   const previousStateRef = useRef<GameState | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
