@@ -70,7 +70,9 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
   const [spinning, setSpinning] = useState(false);
   const [respawing, setRespawing] = useState(false);
   const [claiming, setClaiming] = useState(false);
+  const [toasts, setToasts] = useState<Array<{ id: number; message: string }>>([]);
   const prevBallRef = useRef<number | null>(null);
+  const previousStateRef = useRef<GameState | null>(null);
   const [resultFlash, setResultFlash] = useState<'win' | 'loss' | 'push' | null>(null);
 
   // Derived values — declared BEFORE useEffect calls that reference them
@@ -85,7 +87,33 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
   const load = useCallback(async () => {
     try {
       const next = await apiFetch<GameState>(`/api/games/${gameId}/state`);
+
+      // Detect newly eliminated players and show toasts
+      if (previousStateRef.current) {
+        const prevEliminated = new Set(
+          previousStateRef.current.players.filter((p) => p.is_eliminated).map((p) => p.user_id),
+        );
+        const newlyEliminated = next.players.filter(
+          (p) => p.is_eliminated && !prevEliminated.has(p.user_id),
+        );
+
+        for (const p of newlyEliminated) {
+          const prevPlayer = previousStateRef.current.players.find((x) => x.user_id === p.user_id);
+          const name = p.display_name ?? 'A player';
+          let reason = "didn't vote in time";
+          if (prevPlayer?.vote_locked) {
+            reason = 'guessed wrong';
+          }
+          const toastId = Date.now() + Math.random();
+          setToasts((prev) => [...prev, { id: toastId, message: `${name} was eliminated — ${reason}.` }]);
+          setTimeout(() => {
+            setToasts((prev) => prev.filter((t) => t.id !== toastId));
+          }, 5000);
+        }
+      }
+
       setState(next);
+      previousStateRef.current = next;
 
       // Auto-settle when timer expires (round is in voting and time is up)
       if (next.round?.status === 'voting' && next.round?.seconds_left! <= 0) {
@@ -166,8 +194,12 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
         method: 'POST',
         body: JSON.stringify({ round_id: round.id, direction: intent, amount: betAmount }),
       });
+      // Also lock in the vote — bet without vote doesn't count
+      await apiFetch(`/api/games/${gameId}/vote`, {
+        method: 'POST',
+        body: JSON.stringify({ vote: intent }),
+      });
       setBetAmount('');
-      setIntent(null);
       await load();
     } catch (err) {
       setError((err as Error).message);
@@ -230,6 +262,15 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
 
   return (
     <div className={`game ${resultFlash ? `game--flash-${resultFlash}` : ''}`}>
+      {toasts.length > 0 && (
+        <div className="toasts">
+          {toasts.map((t) => (
+            <div key={t.id} className="toast">
+              {t.message}
+            </div>
+          ))}
+        </div>
+      )}
       <div className="game__header">
         <h2 className="dash__heading">{state.lobby.name}</h2>
         <span className="game__stat">round {round?.number ?? state.lobby.current_round}</span>

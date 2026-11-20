@@ -691,7 +691,11 @@ export async function settleRound(
         winners.push({ user_id: s.user_id, bet: bet.amount, payout });
       } else {
         // Bet on losing side — lose the bet but survive (vote was correct).
-        // Bet stays in the pool, no refund, no payout.
+        await client.query(
+          `update public.bets set settled = true, claimable = 0
+           where game_id = $1 and round_id = $2 and user_id = $3`,
+          [gameId, round.id, s.user_id],
+        );
       }
     }
   }
