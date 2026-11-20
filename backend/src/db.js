@@ -60,13 +60,13 @@ export async function closeDb() {
 }
 
 export async function getUserBalance(userId) {
-  const result = await query('SELECT balance FROM public.app_users WHERE user_id = $1', [userId]);
+  const result = await query('SELECT balance FROM public.app_users WHERE privy_user_id = $1', [userId]);
   return result.rows[0]?.balance ?? null;
 }
 
 export async function updateUserBalance(userId, amount) {
   const result = await query(
-    'UPDATE public.app_users SET balance = balance + $2 WHERE user_id = $1 RETURNING balance',
+    'UPDATE public.app_users SET balance = balance + $2 WHERE privy_user_id = $1 RETURNING balance',
     [userId, amount]
   );
   return result.rows[0]?.balance ?? null;

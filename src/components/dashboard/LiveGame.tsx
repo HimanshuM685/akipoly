@@ -73,7 +73,7 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
   const [claiming, setClaiming] = useState(false);
   const [betPending, setBetPending] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
-  const [connecting, setConnecting] = useState(false);
+  const [connecting, setConnecting] = useState(true);
   const [toasts, setToasts] = useState<Array<{ id: number; message: string }>>([]);
   const sendQueue: Array<{ message: object; resolve: () => void }> = [];
   const prevBallRef = useRef<number | null>(null);
@@ -109,12 +109,12 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
     const ws = wsRef.current;
     if (ws && ws.readyState === WebSocket.OPEN && authenticated) {
       ws.send(JSON.stringify(message));
+      return Promise.resolve();
     } else {
       return new Promise<void>((resolve) => {
         sendQueue.push({ message, resolve });
       });
     }
-    return Promise.resolve();
   };
 
   const flushQueue = () => {
@@ -135,14 +135,19 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
     ws.onopen = () => {
       console.log('[ws] connected');
       setConnecting(false);
+      // Send auth immediately, bypassing send() queue (authenticated is false initially)
       getIdentityToken()
         .then((token) => {
-          if (token) {
-            send({ type: 'auth', token });
+          if (token && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'auth', token }));
+          } else if (!token) {
+            console.error('[ws] No identity token from Privy');
+            addToast('Authentication failed: could not get identity token');
           }
         })
         .catch((err) => {
           console.error('[ws] auth token error:', err.message);
+          addToast('Authentication failed');
         });
     };
 
@@ -206,6 +211,7 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
 
     ws.onerror = (err) => {
       console.error('[ws] error:', err);
+      setError('Connection error. Retrying...');
     };
   }, [gameId, wsUrl, getIdentityToken]);
 
