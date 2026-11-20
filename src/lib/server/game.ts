@@ -652,24 +652,28 @@ export async function settleRound(
     const vote = votes.get(s.user_id);
     const bet = bets.get(s.user_id);
 
-    // No vote before timer ends → out.
-    if (!vote) {
-      eliminatedThisRound.push(s.user_id);
-      // Refund their bet if they placed one.
+    // Round 1: no previous ball to compare against — nothing to vote on.
+    // Everyone survives, all bets refunded, no eliminations, no points.
+    if (prevBall === null) {
       if (bet) refundDue.push({ user_id: s.user_id, amount: bet.amount });
       continue;
     }
 
-    let correct = true;
-    if (prevBall != null) {
-      if (round.ball > prevBall) correct = vote === 'higher';
-      else if (round.ball < prevBall) correct = vote === 'lower';
-      else correct = true; // push — nobody out
+    // No vote before timer ends → out.
+    if (!vote) {
+      eliminatedThisRound.push(s.user_id);
+      if (bet) refundDue.push({ user_id: s.user_id, amount: bet.amount });
+      continue;
     }
+
+    // Determine if vote was correct.
+    let correct = true;
+    if (round.ball > prevBall) correct = vote === 'higher';
+    else if (round.ball < prevBall) correct = vote === 'lower';
+    else correct = true; // equal ball = push — nobody out
 
     if (!correct) {
       eliminatedThisRound.push(s.user_id);
-      // Refund their bet.
       if (bet) refundDue.push({ user_id: s.user_id, amount: bet.amount });
       continue;
     }
@@ -677,18 +681,17 @@ export async function settleRound(
     // Correct call — survivor.
     if (bet) {
       if (highWins === null) {
-        // Push — refund all bets.
+        // Push — equal ball, refund all bets.
         refundDue.push({ user_id: s.user_id, amount: bet.amount });
       } else if ((highWins && bet.direction === 'higher') || (!highWins && bet.direction === 'lower')) {
-        // Winner — proportional payout.
+        // Winner — proportional payout from the total pool.
         const payout = winningSideBets > 0
           ? Math.floor((bet.amount * totalPool) / winningSideBets)
           : bet.amount;
         winners.push({ user_id: s.user_id, bet: bet.amount, payout });
       } else {
-        // Bet on losing side — eliminated.
-        eliminatedThisRound.push(s.user_id);
-        refundDue.push({ user_id: s.user_id, amount: bet.amount });
+        // Bet on losing side — lose the bet but survive (vote was correct).
+        // Bet stays in the pool, no refund, no payout.
       }
     }
   }
