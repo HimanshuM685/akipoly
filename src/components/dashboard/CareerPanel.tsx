@@ -3,7 +3,12 @@ import type { CareerEntry } from '../../../backend/src/shared/protocol';
 import { useGameSocket } from '../../features/game/GameSocket';
 import { formatUsdc } from '../../lib/arc';
 
-export default function CareerPanel() {
+interface Props {
+  onReview: (gameId: string) => void;
+  onOpenTable: (lobbyId: string) => void;
+}
+
+export default function CareerPanel({ onReview, onOpenTable }: Props) {
   const { request, status } = useGameSocket();
   const [games, setGames] = useState<CareerEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -51,20 +56,36 @@ export default function CareerPanel() {
         </button>
       </div>
       <ul className="career__list">
-        {games.map((g) => (
-          <li key={g.gameId} className="career__row">
-            <span className="career__place">
-              {g.placement === 1 ? '🏆' : g.placement ? `#${g.placement}` : '—'}
-            </span>
-            <span className="career__meta">
-              <strong>{g.lobbyName}</strong>
-              <small>{g.endedAt ? new Date(g.endedAt).toLocaleDateString() : 'in progress'}</small>
-            </span>
-            <span className="career__pts">
-              −{formatUsdc(g.buyIn)} / +{formatUsdc(g.won)} usdc
-            </span>
-          </li>
-        ))}
+        {games.map((g) => {
+          const net = BigInt(g.won) - BigInt(g.paidIn);
+          return (
+            <li key={g.gameId}>
+              <button
+                type="button"
+                className="career__row career__row--btn"
+                onClick={() => (g.status === 'live' ? onOpenTable(g.lobbyId) : onReview(g.gameId))}
+              >
+                <span className="career__place">
+                  {g.placement === 1 ? '🏆' : g.placement ? `#${g.placement}` : '—'}
+                </span>
+                <span className="career__meta">
+                  <strong>{g.lobbyName}</strong>
+                  <small>
+                    {g.endedAt ? new Date(g.endedAt).toLocaleDateString() : 'in progress'} · in {formatUsdc(g.paidIn)} ·
+                    out {formatUsdc(g.won)}
+                  </small>
+                </span>
+                <span className={`career__pts ${net >= 0n ? 'career__pts--up' : 'career__pts--down'}`}>
+                  {net >= 0n ? '+' : '−'}
+                  {formatUsdc(net >= 0n ? net : -net)} usdc
+                </span>
+                <span className="career__go" aria-hidden="true">
+                  {g.status === 'live' ? 'rejoin ›' : 'review ›'}
+                </span>
+              </button>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

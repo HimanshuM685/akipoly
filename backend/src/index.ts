@@ -9,7 +9,10 @@ import { startPayoutWorker, stopPayoutWorker } from './services/payouts.js';
 import { attachWebSocket } from './ws/server.js';
 
 async function main() {
-  const pending = await pendingMigrations();
+  const pending = await pendingMigrations().catch((err) => {
+    log.fatal({ err }, 'cannot reach the database — check DATABASE_URL and network');
+    process.exit(1);
+  });
   if (pending.length) {
     log.fatal({ pending }, 'database schema is behind — run `npm run migrate` first');
     process.exit(1);

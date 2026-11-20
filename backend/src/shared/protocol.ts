@@ -43,6 +43,7 @@ export const clientMessageSchema = z.discriminatedUnion('type', [
     txHash: txHash.optional(),
   }),
   z.object({ type: z.literal('career.get'), reqId }),
+  z.object({ type: z.literal('game.review'), reqId, gameId: uuid }),
 ]);
 
 export type ClientMessage = z.infer<typeof clientMessageSchema>;
@@ -137,13 +138,66 @@ export interface GameView {
 
 export interface CareerEntry {
   gameId: string;
+  lobbyId: string;
+  status: 'live' | 'finished';
   lobbyName: string;
   startedAt: string;
   endedAt: string | null;
   placement: number | null;
   eliminatedRound: number | null;
   buyIn: string;
+  /** Buy-in plus accepted side bets. */
+  paidIn: string;
+  /** Pot/split payouts plus side-bet winnings and refunds. */
   won: string;
+}
+
+// ---------------------------------------------------------------------------
+// Game review (career → click a game)
+// ---------------------------------------------------------------------------
+
+export type PayoutStatus = 'pending' | 'sent' | 'confirmed' | 'failed' | 'held';
+
+/** One USDC movement for the viewing player. in = player → treasury, out = treasury → player. */
+export interface LedgerEntry {
+  flow: 'in' | 'out';
+  kind: 'buy_in' | 'side_bet' | PayoutReason;
+  amount: string;
+  txHash: string | null;
+  status: PayoutStatus;
+  roundNumber: number | null;
+  at: string;
+}
+
+export interface ReviewRound {
+  number: number;
+  prevBall: number | null;
+  ball: number;
+  outcome: RoundOutcome;
+  seed: string;
+  seedHash: string;
+  picks: { userId: string; direction: Direction; sideBet: string }[];
+  eliminated: string[];
+  sideResults: { userId: string; amount: string; reason: 'side_win' | 'side_refund' }[];
+}
+
+export interface GameReview {
+  gameId: string;
+  lobbyId: string;
+  lobbyName: string;
+  status: 'live' | 'finished';
+  startedAt: string;
+  endedAt: string | null;
+  buyIn: string;
+  pot: string;
+  fee: string;
+  winnerUserId: string | null;
+  treasury: string;
+  players: { userId: string; displayName: string; placement: number | null; eliminatedRound: number | null }[];
+  /** Settled rounds only (seeds are never exposed before settle). */
+  rounds: ReviewRound[];
+  ledger: LedgerEntry[];
+  me: { userId: string; placement: number | null; eliminatedRound: number | null };
 }
 
 export type ErrorCode =

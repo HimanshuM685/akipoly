@@ -13,6 +13,7 @@ import { pool, withTx } from '../db/pool.js';
 import { broadcast, signUsdcTransfer, transferStatus } from '../chain/usdc.js';
 import { events } from '../events.js';
 import { log } from '../log.js';
+import { AppError } from '../errors.js';
 import type { PayoutReason } from '../shared/protocol.js';
 
 const MAX_ATTEMPTS = 5;
@@ -28,22 +29,39 @@ export interface PayoutRequest {
   gameId?: string | null;
 }
 
-/** Idempotent: the same key is only ever paid once. Call inside a tx. */
+/** Record an accepted incoming transfer; each tx hash can be used once. */
+export async function recordTransfer(
+  client: pg.PoolClient,
+  t: { txHash: string; userId: string; from: string; amount: bigint; purpose: 'buy_in' | 'side_bet' },
+): Promise<void> {
+  const res = await client.query(
+    `insert into public.chain_transfers (tx_hash, user_id, from_address, amount, purpose)
+     values ($1, $2, $3, $4, $5) on conflict do nothing`,
+    [t.txHash, t.userId, t.from, t.amount, t.purpose],
+  );
+  if (res.rowCount === 0) throw new AppError('PAYMENT_INVALID', 'that transaction was already used');
+}
+
+/**
+ * Idempotent: the same key is only ever paid once. Call inside a tx.
+ * Never throws for a missing wallet — that payout is held for review so a
+ * settlement can always commit.
+ */
 export async function enqueuePayouts(client: pg.PoolClient, payouts: readonly PayoutRequest[]): Promise<void> {
   for (const p of payouts) {
     if (p.amount <= 0n) continue;
-    const res = await client.query(
-      `insert into public.payouts (idempotency_key, user_id, to_address, amount, reason, game_id, status)
-       select $1, u.privy_user_id, u.wallet_address, $3, $4, $5, $6
+    const held = p.amount > env.MAX_AUTO_PAYOUT_USDC;
+    await client.query(
+      `insert into public.payouts (idempotency_key, user_id, to_address, amount, reason, game_id, status, last_error)
+       select $1, u.privy_user_id, coalesce(u.wallet_address, ''), $3, $4, $5,
+              case when u.wallet_address is null or $6 then 'held' else 'pending' end,
+              case when u.wallet_address is null then 'no wallet on file'
+                   when $6 then 'above MAX_AUTO_PAYOUT_USDC' end
          from public.app_users u
-        where u.privy_user_id = $2 and u.wallet_address is not null
+        where u.privy_user_id = $2
        on conflict (idempotency_key) do nothing`,
-      [p.key, p.userId, p.amount, p.reason, p.gameId ?? null, p.amount > env.MAX_AUTO_PAYOUT_USDC ? 'held' : 'pending'],
+      [p.key, p.userId, p.amount, p.reason, p.gameId ?? null, held],
     );
-    if (res.rowCount === 0) {
-      const exists = await client.query('select 1 from public.payouts where idempotency_key = $1', [p.key]);
-      if (exists.rowCount === 0) throw new Error(`payout ${p.key}: user ${p.userId} has no wallet`);
-    }
   }
 }
 
@@ -135,29 +153,63 @@ async function confirmSent(): Promise<void> {
   }
 }
 
+/** ms until the worker has something to do; null = queue empty. */
+async function msUntilWork(): Promise<number | null> {
+  const res = await pool.query<{ next_pending: Date | null; has_sent: boolean }>(
+    `select (select min(next_attempt_at) from public.payouts where status = 'pending') as next_pending,
+            exists (select 1 from public.payouts where status = 'sent') as has_sent`,
+  );
+  const row = res.rows[0];
+  if (row?.has_sent) return POLL_MS; // waiting on confirmations
+  return row?.next_pending ? row.next_pending.getTime() - Date.now() : null;
+}
+
+// Event-driven like the scheduler: idle queue = no polling (Neon can sleep);
+// settlements and refunds wake it through the lobby event.
 let timer: NodeJS.Timeout | null = null;
 let busy = false;
+let stopped = true;
+let wakeAgain = false;
+
+async function work(): Promise<void> {
+  if (stopped) return;
+  if (busy) {
+    wakeAgain = true;
+    return;
+  }
+  busy = true;
+  if (timer) clearTimeout(timer);
+  timer = null;
+  let delay: number | null;
+  try {
+    while (await sendNext()) {
+      /* drain the queue */
+    }
+    await confirmSent();
+    delay = await msUntilWork();
+  } catch (err) {
+    log.error({ err }, 'payout worker tick failed');
+    delay = POLL_MS;
+  } finally {
+    busy = false;
+  }
+  if (wakeAgain) {
+    wakeAgain = false;
+    delay = 0;
+  }
+  if (delay !== null && !stopped) timer = setTimeout(() => void work(), Math.max(50, Math.min(delay, 60_000)));
+}
 
 export function startPayoutWorker(): void {
-  if (timer) return;
-  timer = setInterval(async () => {
-    if (busy) return;
-    busy = true;
-    try {
-      while (await sendNext()) {
-        /* drain the queue */
-      }
-      await confirmSent();
-    } catch (err) {
-      log.error({ err }, 'payout worker tick failed');
-    } finally {
-      busy = false;
-    }
-  }, POLL_MS);
+  if (!stopped) return;
+  stopped = false;
+  events.on('lobby', () => void work());
+  void work();
   log.info('payout worker started');
 }
 
 export function stopPayoutWorker(): void {
-  if (timer) clearInterval(timer);
+  stopped = true;
+  if (timer) clearTimeout(timer);
   timer = null;
 }

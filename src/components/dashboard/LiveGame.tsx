@@ -46,9 +46,14 @@ export default function LiveGame({ lobby, game, onLeave }: Props) {
     if (!meBefore?.alive) return;
     if (latest.outcome === 'push' || latest.outcome === 'void') setFlash('push');
     else setFlash(game.me?.alive ? 'win' : 'loss');
+  }, [game, toast]);
+
+  // Clear the flash on its own timer so later pushes can't cancel the reset.
+  useEffect(() => {
+    if (!flash) return;
     const t = window.setTimeout(() => setFlash(null), 900);
     return () => window.clearTimeout(t);
-  }, [game, toast]);
+  }, [flash]);
 
   const ballLabel = (() => {
     if (!round) return '';

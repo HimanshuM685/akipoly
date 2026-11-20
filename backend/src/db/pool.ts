@@ -7,11 +7,21 @@ pg.types.setTypeParser(pg.types.builtins.INT8, (v) => BigInt(v));
 
 export type Db = pg.PoolClient | pg.Pool;
 
+/**
+ * pg lets connection-string params (sslmode, …) override the config object,
+ * so when an explicit TLS servername is needed (URL points at an IP), strip
+ * them from the URL and pass ssl ourselves.
+ */
+function connectionConfig(): pg.PoolConfig {
+  const servername = env.DATABASE_TLS_SERVERNAME;
+  if (!servername) return { connectionString: env.DATABASE_URL };
+  const url = new URL(env.DATABASE_URL);
+  for (const key of ['ssl', 'sslmode', 'sslcert', 'sslkey', 'sslrootcert', 'uselibpqcompat']) url.searchParams.delete(key);
+  return { connectionString: url.toString(), ssl: { rejectUnauthorized: true, servername } };
+}
+
 export const pool = new pg.Pool({
-  connectionString: env.DATABASE_URL,
-  ...(env.DATABASE_TLS_SERVERNAME
-    ? { ssl: { rejectUnauthorized: true, servername: env.DATABASE_TLS_SERVERNAME } }
-    : {}),
+  ...connectionConfig(),
   max: env.DB_POOL_MAX,
   idleTimeoutMillis: 30_000,
   connectionTimeoutMillis: 5_000,
