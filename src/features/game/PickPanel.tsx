@@ -11,7 +11,7 @@ interface Props {
 
 /** Call higher/lower for the current round, optionally backed by a USDC side bet. */
 export default function PickPanel({ game }: Props) {
-  const { session, request, paidRequest, status } = useGameSocket();
+  const { session, request, paidRequest, pendingPayments, status } = useGameSocket();
   const pay = usePayUsdc();
   const [direction, setDirection] = useState<Direction | null>(null);
   const [sideBet, setSideBet] = useState('');
@@ -19,6 +19,9 @@ export default function PickPanel({ game }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   const round = game.round!;
+  const callPending = pendingPayments.some(
+    (p) => p.type === 'game.pick' && p.gameId === game.id && p.roundNumber === round.number,
+  );
   const prev = round.prevBall ?? 8;
   const sideUnits = sideBet.trim() ? parseUsdc(sideBet) : 0n;
   const maxSide = session ? BigInt(session.limits.maxSideBet) : 0n;
@@ -66,6 +69,10 @@ export default function PickPanel({ game }: Props) {
       </button>
     );
   };
+
+  if (callPending && step === 'idle') {
+    return <p className="game__locked">side bet sent — locking in your call as soon as you&apos;re back online…</p>;
+  }
 
   return (
     <div className="game__bet" role="group" aria-label="Make your call">

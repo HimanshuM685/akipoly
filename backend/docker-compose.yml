@@ -1,0 +1,24 @@
+# One command to build, migrate and run:   docker compose up -d --build
+# Update after a git pull:                 docker compose up -d --build
+# Logs:                                    docker compose logs -f
+services:
+  game:
+    build: .
+    image: akipoly-game
+    container_name: akipoly-game
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      # The server always listens on 8081 inside the container...
+      PORT: "8081"
+    ports:
+      # ...and is published on the host at PORT / WS_PORT from backend/.env (default 8081).
+      - "${PORT:-${WS_PORT:-8081}}:8081"
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"

@@ -35,17 +35,37 @@ export const pool = new pg.Pool({
 // and crashes the process. The pool discards the client on its own.
 pool.on('error', (err) => log.warn({ err }, 'idle db client error'));
 
+const commitHooks = new WeakMap<pg.PoolClient, Array<() => void>>();
+
+/**
+ * Run cb once the transaction that `client` is in commits (never on rollback).
+ * Use for side effects that must only see committed data, e.g. waking workers.
+ */
+export function afterCommit(client: pg.PoolClient, cb: () => void): void {
+  commitHooks.get(client)?.push(cb);
+}
+
 /**
  * Run fn in a transaction. A client whose connection broke is destroyed
  * (release(err)) instead of going back into the pool.
  */
 export async function withTx<T>(fn: (client: pg.PoolClient) => Promise<T>): Promise<T> {
   const client = await pool.connect();
+  const hooks: Array<() => void> = [];
+  commitHooks.set(client, hooks);
   let broken: Error | undefined;
   try {
     await client.query('BEGIN');
     const result = await fn(client);
     await client.query('COMMIT');
+    commitHooks.delete(client);
+    for (const cb of hooks) {
+      try {
+        cb();
+      } catch (err) {
+        log.error({ err }, 'after-commit hook failed'); // the tx is committed either way
+      }
+    }
     return result;
   } catch (err) {
     try {
@@ -55,6 +75,7 @@ export async function withTx<T>(fn: (client: pg.PoolClient) => Promise<T>): Prom
     }
     throw err;
   } finally {
+    commitHooks.delete(client);
     client.release(broken);
   }
 }
