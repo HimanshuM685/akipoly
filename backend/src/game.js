@@ -292,7 +292,7 @@ export async function placeBet(client, gameId, roundId, userId, side, amount) {
 
   // Insert the bet
   await client.query(
-    `insert into public.bets (game_id, round_id, user_id, side, amount, settled, claimable)
+    `insert into public.bets (game_id, round_id, user_id, direction, amount, settled, claimable)
      values ($1, $2, $3, $4, $5, false, $5)`,
     [gameId, roundId, userId, side, betAmount],
   );
@@ -479,7 +479,7 @@ export async function settleRound(client, gameId, force) {
   }
 
   const betsRes = await client.query(
-    `select user_id, side, amount from public.bets where round_id = $1 and settled = false`,
+    `select user_id, direction as side, amount from public.bets where round_id = $1 and settled = false`,
     [round.id],
   );
   const bets = new Map(betsRes.rows.map((r) => [r.user_id, { side: r.side, amount: parseInt(r.amount, 10) }]));
