@@ -191,8 +191,9 @@ export async function snapshotGame(client, gameId, meUserId) {
  */
 export async function rollBall(client, gameId) {
   const roundRes = await client.query(
-    `select id, round_number from public.rounds
-      where game_id = $1 order by round_number desc limit 1 for update`,
+    `select r.id, r.round_number, r.status, g.lobby_id
+       from public.rounds r join public.games g on g.id = r.game_id
+      where r.game_id = $1 order by r.round_number desc limit 1 for update of r`,
     [gameId],
   );
   const round = roundRes.rows[0];
@@ -205,47 +206,11 @@ export async function rollBall(client, gameId) {
       where id = $2`,
     [ball, round.id],
   );
-  return { ball, round: round.round_number };
-}
-
-/**
- * Spin the ball (host only).
- */
-export async function spin(client, gameId, userId) {
-  const gameRes = await client.query(
-    `select g.id, g.lobby_id, l.host_user_id, l.status
-       from public.games g join public.lobbies l on l.id = g.lobby_id
-      where g.id = $1 for update of g`,
-    [gameId],
-  );
-  if (gameRes.rowCount === 0) throw new GameError(404, 'game not found');
-  const g = gameRes.rows[0];
-  if (g.host_user_id !== userId) throw new GameError(403, 'only the host spins the ball');
-  if (g.status !== 'live') throw new GameError(409, 'game is not live');
-
-  const roundRes = await client.query(
-    `select id, round_number, ball, status from public.rounds
-      where game_id = $1 order by round_number desc limit 1 for update`,
-    [gameId],
-  );
-  const round = roundRes.rows[0];
-  if (!round) throw new GameError(409, 'no round to spin');
-  if (round.status !== 'awaiting_spin') {
-    throw new GameError(409, 'round already spinning or settled');
-  }
-
-  const ball = randomBall();
-  await client.query(
-    `update public.rounds
-        set ball = $1, status = 'voting', opened_at = now()
-      where id = $2`,
-    [ball, round.id],
-  );
   await client.query(
     `update public.lobbies set current_round = $1, updated_at = now() where id = $2`,
-    [round.round_number, g.lobby_id],
+    [round.round_number, round.lobby_id],
   );
-  return { ball };
+  return { ball, round: round.round_number };
 }
 
 /**

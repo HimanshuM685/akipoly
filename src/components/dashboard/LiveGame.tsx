@@ -70,7 +70,6 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
   const [betAmount, setBetAmount] = useState('');
   const [claiming, setClaiming] = useState(false);
   const [betPending, setBetPending] = useState(false);
-  const [authenticated, setAuthenticated] = useState(false);
   const [connecting, setConnecting] = useState(true);
   const [toasts, setToasts] = useState<Array<{ id: number; message: string }>>([]);
   const prevBallRef = useRef<number | null>(null);
@@ -131,14 +130,13 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
     ws.onopen = () => {
       console.log('[ws] connected');
       setConnecting(false);
-      // Send join_game immediately - doesn't need auth
+      // join_game and get_state are allowed before auth; re-fetch on auth_ok for per-user fields.
       ws.send(JSON.stringify({ type: 'join_game', gameId }));
-      // Get state AFTER auth - needs userId
+      ws.send(JSON.stringify({ type: 'get_state', gameId }));
       getIdentityToken()
         .then((token) => {
           if (token && ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({ type: 'auth', token }));
-            ws.send(JSON.stringify({ type: 'get_state', gameId }));
           } else if (!token) {
             console.error('[ws] No identity token from Privy');
             addToast('Authentication failed: could not get identity token');
@@ -157,7 +155,7 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
         switch (data.type) {
           case 'auth_ok':
             console.log('[ws] authenticated');
-            setAuthenticated(true);
+            ws.send(JSON.stringify({ type: 'get_state', gameId }));
             flushQueue();
             break;
           case 'state':
@@ -201,7 +199,6 @@ export default function LiveGame({ gameId, onLobbyLeft }: Props) {
     ws.onclose = () => {
       console.log('[ws] disconnected, reconnecting in 3s...');
       wsRef.current = null;
-      setAuthenticated(false);
       setConnecting(true);
       setTimeout(connect, 3000);
     };
