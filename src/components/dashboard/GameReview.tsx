@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import type { GameReview as Review, LedgerEntry, ReviewRound } from '../../../backend/src/shared/protocol';
 import { useGameSocket } from '../../features/game/GameSocket';
 import { BALL_COLORS, DARK_BALLS } from '../../features/game/BallReel';
-import { addressUrl, formatUsdc, txUrl } from '../../lib/arc';
-import { verifyRound } from '../../lib/fairness';
+import { addressUrl, formatUsdc, readRoundDraw, txUrl } from '../../lib/arc';
+import { verifyLegacyRound, verifyVrfRound } from '../../lib/fairness';
 
 interface Props {
   gameId: string;
@@ -49,7 +49,7 @@ export default function GameReview({ gameId, onBack }: Props) {
   const { request, status } = useGameSocket();
   const [review, setReview] = useState<Review | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // true = verified, false = mismatch, null = can't check in this browser context.
+  // true = verified, false = mismatch, null = couldn't check (chain unreachable / no https).
   const [fair, setFair] = useState<Map<number, boolean | null>>(new Map());
 
   useEffect(() => {
@@ -60,21 +60,31 @@ export default function GameReview({ gameId, onBack }: Props) {
       .catch((err: Error) => setError(err.message));
   }, [status, gameId, request]);
 
-  // Re-check every revealed ball in the browser (provably fair).
+  // Re-check every ball from the browser: VRF rounds against the Arc contract
+  // directly (not our server), older rounds against their revealed seed.
   useEffect(() => {
     if (!review) return;
     let cancelled = false;
     Promise.all(
-      review.rounds.map(async (r) => {
-        const v = await verifyRound(r.seed, r.seedHash, review.gameId, r.number, r.ball);
-        return [r.number, v.hashOk && v.ballOk] as const;
+      review.rounds.map(async (r): Promise<readonly [number, boolean | null]> => {
+        if (r.vrf) {
+          const v = await verifyVrfRound(readRoundDraw(review.vrfContracts.rounds), review.gameId, r.number, r.ball, r.vrf);
+          return [r.number, v === 'unavailable' ? null : v === 'verified'] as const;
+        }
+        if (r.legacy) {
+          // crypto.subtle only exists on https/localhost.
+          const v = await verifyLegacyRound(r.legacy.seed, r.legacy.seedHash, review.gameId, r.number, r.ball).catch(
+            () => null,
+          );
+          return [r.number, v ? v.hashOk && v.ballOk : null] as const;
+        }
+        return [r.number, false] as const; // a settled ball with no proof at all
       }),
     )
       .then((checks) => {
         if (!cancelled) setFair(new Map(checks));
       })
       .catch(() => {
-        // crypto.subtle only exists on https/localhost.
         if (!cancelled) setFair(new Map(review.rounds.map((r) => [r.number, null])));
       });
     return () => {
@@ -320,9 +330,13 @@ export default function GameReview({ gameId, onBack }: Props) {
                   <span className={`review__outcome review__outcome--${r.outcome}`}>{outcomeLabel[r.outcome]}</span>
                   <span
                     className={`review__fair ${ok === false ? 'review__fair--bad' : ok === null ? 'review__fair--na' : ''}`}
-                    title="ball recomputed in your browser from the revealed seed"
+                    title={
+                      r.vrf
+                        ? 'ball read from the AkipolyRounds contract on Arc, where the VRF proof was verified'
+                        : 'ball recomputed in your browser from the revealed seed'
+                    }
                   >
-                    {ok === undefined ? 'checking…' : ok === null ? 'verify needs https' : ok ? '✓ fair' : '✗ mismatch'}
+                    {ok === undefined ? 'checking…' : ok === null ? "can't check" : ok ? '✓ fair' : '✗ mismatch'}
                   </span>
                 </div>
 
@@ -371,15 +385,41 @@ export default function GameReview({ gameId, onBack }: Props) {
                     side pools — higher {formatUsdc(pools.higher)} · lower {formatUsdc(pools.lower)} usdc
                   </p>
                 )}
-                <details className="game__fair">
-                  <summary>seed</summary>
-                  <p>
-                    commitment: <code>{r.seedHash}</code>
-                  </p>
-                  <p>
-                    seed: <code>{r.seed}</code>
-                  </p>
-                </details>
+                {r.vrf && (
+                  <details className="game__fair">
+                    <summary>on-chain draw</summary>
+                    <p>
+                      request:{' '}
+                      <a href={txUrl(r.vrf.requestTx)} target="_blank" rel="noreferrer">
+                        <code>{shortHash(r.vrf.requestTx)}</code>
+                      </a>{' '}
+                      (block {r.vrf.requestBlock})
+                      {r.vrf.fulfillTx && (
+                        <>
+                          {' '}
+                          · proof:{' '}
+                          <a href={txUrl(r.vrf.fulfillTx)} target="_blank" rel="noreferrer">
+                            <code>{shortHash(r.vrf.fulfillTx)}</code>
+                          </a>
+                        </>
+                      )}
+                    </p>
+                    <p>
+                      random word: <code>{r.vrf.randomWord}</code> · ball = word mod 17
+                    </p>
+                  </details>
+                )}
+                {r.legacy && (
+                  <details className="game__fair">
+                    <summary>seed (pre-VRF game)</summary>
+                    <p>
+                      commitment: <code>{r.legacy.seedHash}</code>
+                    </p>
+                    <p>
+                      seed: <code>{r.legacy.seed}</code>
+                    </p>
+                  </details>
+                )}
               </li>
             );
           })}

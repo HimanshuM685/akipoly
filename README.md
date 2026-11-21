@@ -57,8 +57,19 @@ ready, a 3 s countdown starts the game. An opening ball rolls, then each round
 every player still standing calls whether the next ball (00–16) is **higher or
 lower** — optionally backing the call with a USDC side bet (pari-mutuel per
 round). Wrong call or no call = out; same ball = push. Last player standing
-takes the pot (minus `HOUSE_FEE_BPS`). Balls are provably fair: the server
-publishes `sha256(seed)` before calls close and reveals the seed after.
+takes the pot (minus `HOUSE_FEE_BPS`).
+
+**Provably fair balls (on-chain VRF).** Every ball comes from Akipoly's own
+verifiable random function on Arc (`contracts/`), modelled on Chainlink VRF
+v2.5. When calls close, the treasury calls `AkipolyRounds.requestBall(game,
+round)`. The coordinator derives the VRF input from on-chain data only,
+`keccak256(preSeed, blockhash(requestBlock))`, so nobody knows it until the
+request has landed. The oracle key (`VRF_ORACLE_KEY`, registered on-chain)
+proves the VRF, and the coordinator verifies that proof on-chain. A bad proof
+reverts, so the oracle can only withhold a ball, never choose one.
+`AkipolyRounds` itself sets `ball = randomWord % 17`, and the game review re-reads
+it from the chain. A round can never be re-requested. Rounds go betting →
+drawing → rolling → settled.
 
 **Network toggle.** `ARC_NETWORK` (server) and `PUBLIC_ARC_NETWORK` (site) pick
 `testnet` (chain 5042002, free USDC from https://faucet.circle.com/) or
@@ -98,7 +109,9 @@ Set `BIND_ADDRESS=0.0.0.0` in `.env` only if nothing proxies it.
 
 **Capacity.** One container serves well over 100 concurrent players
 (`backend/scripts/loadtest.ts`, real services + scheduler + push hub, local
-Postgres, 5 s betting / 1 s rolling):
+Postgres, 5 s betting / 1 s rolling). The load test doesn't touch Arc: VRF draws are
+answered by an in-process stand-in after `LOADTEST_VRF_MS` (default 1500). The
+figures below predate the VRF drawing phase.
 
 | players | games | `placePick` p95 | change → push p95 | phase lateness p95 | pool waiting max |
 | ------- | ----- | --------------- | ----------------- | ------------------ | ---------------- |
@@ -122,8 +135,10 @@ backend/src/shared/        protocol (zod) + Arc network table, imported by the s
 backend/src/config/env.ts  validated env (fails fast)
 backend/src/db/            pool (error-safe), migration runner, read-model views
 backend/src/domain/        pure rules + provably-fair ball (unit tested)
-backend/src/chain/usdc.ts  verify incoming USDC, sign/broadcast payouts
-backend/src/services/      lobby + game state machines, payout queue/worker
+backend/src/chain/usdc.ts  verify incoming USDC, sign/broadcast treasury txs
+backend/src/chain/vrf*.ts  VRF prover (port of Chainlink's) + coordinator/rounds client
+backend/src/services/      lobby + game state machines, VRF draws, payouts, treasury worker
+contracts/                 VRF coordinator, verifier, BlockhashStore, AkipolyRounds (npm test / npm run deploy)
 backend/src/scheduler/     advances due rounds/countdowns (SKIP LOCKED, multi-instance safe)
 backend/src/ws/            transport (rate limit, heartbeat), router, per-user push hub
 ```

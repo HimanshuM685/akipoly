@@ -84,19 +84,43 @@ export interface LobbyView {
   players: LobbyPlayerView[];
 }
 
-export type RoundPhase = 'betting' | 'rolling' | 'settled';
+/**
+ * betting → drawing (calls closed, VRF requested on-chain) → rolling (ball known) → settled.
+ * Round 0 starts at drawing.
+ */
+export type RoundPhase = 'betting' | 'drawing' | 'rolling' | 'settled';
+
+/**
+ * The on-chain VRF draw behind a ball. Anyone can check it on Arc: the
+ * coordinator verified the proof in the fulfill tx, and AkipolyRounds
+ * computed ball = randomWord % 17 itself.
+ */
+export interface RoundVrf {
+  requestId: string;
+  /** AkipolyRounds.requestBall, sent by the treasury after betting closed. */
+  requestTx: string;
+  requestBlock: string;
+  /** AkipolyVRFCoordinator.fulfillRandomWords: the proof, verified on-chain. Null if fulfilled by someone else. */
+  fulfillTx: string | null;
+  /** uint256 word the coordinator delivered; ball = randomWord % 17. */
+  randomWord: string;
+}
+
+/** Where the VRF lives, so clients can verify against the chain themselves. */
+export interface VrfContracts {
+  rounds: string;
+  coordinator: string;
+}
 export type RoundOutcome = 'higher' | 'lower' | 'push' | 'void' | 'opening';
 
 export interface RoundView {
   number: number;
   phase: RoundPhase;
   prevBall: number | null;
-  /** Present while rolling (bets are closed) and after. */
+  /** Present once the VRF has answered (rolling and settled). */
   ball: number | null;
-  /** sha256(seed), published before bets close. */
-  seedHash: string;
-  /** Revealed once settled, so anyone can check the ball. */
-  seed: string | null;
+  /** The on-chain draw; null while betting/drawing. */
+  vrf: RoundVrf | null;
   phaseEndsAt: string;
   picksIn: number;
   sidePools: { higher: string; lower: string };
@@ -174,8 +198,10 @@ export interface ReviewRound {
   prevBall: number | null;
   ball: number;
   outcome: RoundOutcome;
-  seed: string;
-  seedHash: string;
+  /** On-chain VRF draw (games after the VRF switch). */
+  vrf: RoundVrf | null;
+  /** Commit-reveal seed for games played before the VRF switch. */
+  legacy: { seed: string; seedHash: string } | null;
   picks: { userId: string; direction: Direction; sideBet: string }[];
   eliminated: string[];
   sideResults: { userId: string; amount: string; reason: 'side_win' | 'side_refund' }[];
@@ -193,8 +219,9 @@ export interface GameReview {
   fee: string;
   winnerUserId: string | null;
   treasury: string;
+  vrfContracts: VrfContracts;
   players: { userId: string; displayName: string; placement: number | null; eliminatedRound: number | null }[];
-  /** Settled rounds only (seeds are never exposed before settle). */
+  /** Settled rounds only. */
   rounds: ReviewRound[];
   ledger: LedgerEntry[];
   me: { userId: string; placement: number | null; eliminatedRound: number | null };
@@ -221,6 +248,7 @@ export type ServerMessage =
       walletAddress: string | null;
       network: 'testnet' | 'mainnet';
       treasury: string;
+      vrfContracts: VrfContracts;
       limits: { minBuyIn: string; maxBuyIn: string; maxSideBet: string };
       timing: { bettingMs: number; rollingMs: number };
       serverNow: number;

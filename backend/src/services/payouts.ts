@@ -1,6 +1,6 @@
 /**
  * Payouts: enqueued inside the settling transaction (atomic with game state),
- * sent later by a single worker. Lifecycle:
+ * sent later by the single treasury worker (services/treasuryWorker.ts). Lifecycle:
  *   pending → sent (signed raw tx + hash stored, then broadcast) → confirmed
  *   pending → failed after MAX_ATTEMPTS signing errors
  *   sent    → held when it never lands (needs a human), failed if reverted
@@ -76,7 +76,8 @@ interface SentRow {
   updated_at: Date;
 }
 
-async function sendNext(): Promise<boolean> {
+/** Sign + broadcast one due payout. false = queue drained or broadcast failed (stop for now). */
+export async function sendNext(): Promise<boolean> {
   const row = await withTx(async (c) => {
     const res = await c.query<{ id: string; to_address: string; amount: bigint; attempts: number }>(
       `select id, to_address, amount, attempts from public.payouts
@@ -121,7 +122,7 @@ async function sendNext(): Promise<boolean> {
   }
 }
 
-async function confirmSent(): Promise<void> {
+export async function confirmSent(): Promise<void> {
   const { rows } = await pool.query<SentRow>(
     `select id, user_id, amount, reason, tx_hash, raw_tx, updated_at
        from public.payouts where status = 'sent' order by updated_at limit 25`,
@@ -154,8 +155,8 @@ async function confirmSent(): Promise<void> {
   }
 }
 
-/** ms until the worker has something to do; null = queue empty. */
-async function msUntilWork(): Promise<number | null> {
+/** ms until payouts need the worker again; null = queue empty. */
+export async function msUntilPayoutWork(): Promise<number | null> {
   const res = await pool.query<{ next_pending: Date | null; has_sent: boolean }>(
     `select (select min(next_attempt_at) from public.payouts where status = 'pending') as next_pending,
             exists (select 1 from public.payouts where status = 'sent') as has_sent`,
@@ -163,54 +164,4 @@ async function msUntilWork(): Promise<number | null> {
   const row = res.rows[0];
   if (row?.has_sent) return POLL_MS; // waiting on confirmations
   return row?.next_pending ? row.next_pending.getTime() - Date.now() : null;
-}
-
-// Event-driven like the scheduler: idle queue = no polling (Neon can sleep);
-// every committed enqueue wakes it through the payouts event.
-let timer: NodeJS.Timeout | null = null;
-let busy = false;
-let stopped = true;
-let wakeAgain = false;
-
-async function work(): Promise<void> {
-  if (stopped) return;
-  if (busy) {
-    wakeAgain = true;
-    return;
-  }
-  busy = true;
-  if (timer) clearTimeout(timer);
-  timer = null;
-  let delay: number | null;
-  try {
-    while (await sendNext()) {
-      /* drain the queue */
-    }
-    await confirmSent();
-    delay = await msUntilWork();
-  } catch (err) {
-    log.error({ err }, 'payout worker tick failed');
-    delay = POLL_MS;
-  } finally {
-    busy = false;
-  }
-  if (wakeAgain) {
-    wakeAgain = false;
-    delay = 0;
-  }
-  if (delay !== null && !stopped) timer = setTimeout(() => void work(), Math.max(50, Math.min(delay, 60_000)));
-}
-
-export function startPayoutWorker(): void {
-  if (!stopped) return;
-  stopped = false;
-  events.on('payouts', () => void work());
-  void work();
-  log.info('payout worker started');
-}
-
-export function stopPayoutWorker(): void {
-  stopped = true;
-  if (timer) clearTimeout(timer);
-  timer = null;
 }

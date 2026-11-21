@@ -44,9 +44,19 @@ interface Props {
   rollingMs: number;
   clockOffset: number;
   label: string;
+  /** Shown while rolling (default "rolling…"). */
+  rollingLabel?: string;
 }
 
-export default function BallReel({ value, rolling, landAt, rollingMs, clockOffset, label }: Props) {
+export default function BallReel({
+  value,
+  rolling,
+  landAt,
+  rollingMs,
+  clockOffset,
+  label,
+  rollingLabel = 'rolling…',
+}: Props) {
   const [shown, setShown] = useState<number | null>(value);
   const [phase, setPhase] = useState<'idle' | 'rolling' | 'landed'>('idle');
   const lastShown = useRef<number | null>(value);
@@ -99,7 +109,7 @@ export default function BallReel({ value, rolling, landAt, rollingMs, clockOffse
         <span className="game__ball-num">{n === null ? '??' : pad(n)}</span>
       </div>
       <p className="ballreel__label" aria-live="polite">
-        {phase === 'rolling' ? 'rolling…' : label}
+        {phase === 'rolling' ? rollingLabel : label}
       </p>
     </div>
   );

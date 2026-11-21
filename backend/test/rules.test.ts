@@ -9,7 +9,7 @@ import {
   settleSideBets,
   type PickInput,
 } from '../src/domain/rules.ts';
-import { deriveBall, hashSeed, newSeed } from '../src/domain/fairness.ts';
+import { ballFromRandomWord } from '../src/domain/fairness.ts';
 
 const pick = (userId: string, direction: 'higher' | 'lower', sideBet = 0n): PickInput => ({
   userId,
@@ -95,13 +95,11 @@ test('game over', () => {
   assert.equal(isGameOver(2, 3, 50), false);
 });
 
-test('fairness: deterministic, in range, verifiable', () => {
-  const { seed, seedHash } = newSeed();
-  assert.equal(hashSeed(seed), seedHash);
-  const a = deriveBall(seed, 'g', 3);
-  assert.equal(a, deriveBall(seed, 'g', 3));
-  for (let i = 0; i < 500; i++) {
-    const b = deriveBall(seed, 'g', i);
+test('fairness: ball from the on-chain random word is deterministic and in range', () => {
+  for (let i = 0n; i < 500n; i++) {
+    const w = i * 0x9e3779b97f4a7c15f39cc0605cedc834n;
+    const b = ballFromRandomWord(w);
+    assert.equal(b, ballFromRandomWord(w));
     assert.ok(b >= 0 && b <= 16);
   }
 });

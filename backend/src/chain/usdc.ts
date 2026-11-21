@@ -70,10 +70,20 @@ export async function incomingTransferTotal(params: { txHash: Hash; from: string
  * rebroadcast the same transaction, never send a second one.
  */
 export async function signUsdcTransfer(to: string, amount: bigint): Promise<{ raw: Hex; hash: Hash }> {
-  const request = await walletClient.prepareTransactionRequest({
-    to: usdc,
-    data: encodeFunctionData({ abi: erc20Abi, functionName: 'transfer', args: [getAddress(to), amount] }),
-  });
+  return signTreasuryTx(
+    usdc,
+    encodeFunctionData({ abi: erc20Abi, functionName: 'transfer', args: [getAddress(to), amount] }),
+  );
+}
+
+/**
+ * Sign (but do not broadcast) any treasury contract call. The nonce comes from
+ * the chain's pending count, so callers must broadcast each signed tx before
+ * signing the next. The single treasury worker does exactly that for both
+ * payouts and VRF calls.
+ */
+export async function signTreasuryTx(to: Address, data: Hex): Promise<{ raw: Hex; hash: Hash }> {
+  const request = await walletClient.prepareTransactionRequest({ to, data });
   const raw = await walletClient.signTransaction(request);
   return { raw, hash: keccak256(raw) };
 }

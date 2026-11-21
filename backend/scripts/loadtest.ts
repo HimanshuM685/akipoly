@@ -3,13 +3,14 @@
  * scheduler and push hub against a THROWAWAY Postgres. Players are fake
  * sockets that react to pushed game views like the web client does (call
  * higher/lower a moment after a round opens). No chain calls: buy-ins are
- * marked paid in SQL and calls carry no side bet.
+ * marked paid in SQL, calls carry no side bet, and VRF draws are answered by
+ * an in-process stand-in after LOADTEST_VRF_MS (1500).
  *
  *   docker compose -f docker-compose.loadtest.yml run --rm loadtest
  *   # or, against any local Postgres:
  *   DATABASE_URL=postgresql://postgres:test@localhost:5432/postgres npm run loadtest
  *
- * Knobs: LOADTEST_TABLES (10), LOADTEST_PLAYERS (10), LOADTEST_P95_MS (250).
+ * Knobs: LOADTEST_TABLES (10), LOADTEST_PLAYERS (10), LOADTEST_P95_MS (250), LOADTEST_VRF_MS (1500).
  */
 import { randomBytes, randomUUID } from 'node:crypto';
 import { performance } from 'node:perf_hooks';
@@ -31,6 +32,12 @@ process.env.MAX_ROUNDS ??= '15';
 process.env.PRIVY_APP_ID ??= 'loadtest';
 process.env.TREASURY_PRIVATE_KEY ??= `0x${randomBytes(32).toString('hex')}`;
 process.env.LOG_LEVEL ??= 'warn';
+// No chain here: VRF draws are answered by the stand-in below.
+process.env.VRF_ROUNDS_ADDRESS ??= `0x${'11'.repeat(20)}`;
+process.env.VRF_COORDINATOR_ADDRESS ??= `0x${'22'.repeat(20)}`;
+process.env.VRF_ORACLE_KEY ??= `0x${randomBytes(32).toString('hex')}`;
+/** Simulated request + proof round trip on Arc. */
+const VRF_LATENCY_MS = Number(process.env.LOADTEST_VRF_MS ?? 1500);
 
 const TABLES = Number(process.env.LOADTEST_TABLES ?? 10);
 const PLAYERS = Number(process.env.LOADTEST_PLAYERS ?? 10);
@@ -62,6 +69,30 @@ const pct = (xs: number[], p: number) => {
 };
 const fmt = (xs: number[]) =>
   `n=${xs.length} p50=${pct(xs, 50).toFixed(1)} p95=${pct(xs, 95).toFixed(1)} max=${pct(xs, 100).toFixed(1)} ms`;
+
+// ---- VRF stand-in ------------------------------------------------------------
+// The treasury worker isn't started (it would need Arc). Instead, queued draws
+// are answered in SQL after VRF_LATENCY_MS with a random ball, moving the round
+// drawing → rolling exactly like services/vrf.ts finish() does. This tests the
+// server and database, not the chain.
+async function answerVrfDraws(): Promise<void> {
+  const { rows } = await pool.query<{ lobby_id: string }>(
+    `with due as (
+       update public.vrf_jobs set status = 'done', updated_at = now()
+        where status = 'pending' returning round_id
+     )
+     update public.rounds r
+        set phase = 'rolling', ball = floor(random() * 17)::int, phase_ends_at = now() + $1::interval
+       from due, public.games g
+      where r.id = due.round_id and r.phase = 'drawing' and g.id = r.game_id
+      returning g.lobby_id`,
+    [`${process.env.ROLLING_MS} milliseconds`],
+  );
+  for (const { lobby_id } of rows) events.emit('lobby', lobby_id);
+}
+events.on('vrf', () => {
+  setTimeout(() => void answerVrfDraws().catch((err) => console.error('VRF stand-in failed', err)), VRF_LATENCY_MS);
+});
 
 // change → first push received, per lobby
 const changedAt = new Map<string, number>();
