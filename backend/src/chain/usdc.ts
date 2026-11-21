@@ -45,7 +45,7 @@ export async function incomingTransferTotal(params: { txHash: Hash; from: string
   try {
     receipt = await publicClient.waitForTransactionReceipt({ hash: params.txHash, timeout: 30_000 });
   } catch {
-    throw invalid('transaction not found or not confirmed yet');
+    throw new AppError('PAYMENT_PENDING', 'payment not confirmed on-chain yet — retrying');
   }
   if (receipt.status !== 'success') throw invalid('transaction reverted');
 

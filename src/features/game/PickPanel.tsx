@@ -71,7 +71,7 @@ export default function PickPanel({ game }: Props) {
   };
 
   if (callPending && step === 'idle') {
-    return <p className="game__locked">side bet sent — locking in your call as soon as you&apos;re back online…</p>;
+    return <p className="game__locked">side bet sent — confirming your call…</p>;
   }
 
   return (

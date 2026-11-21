@@ -17,12 +17,27 @@ import { formatUsdc, txUrl } from '../../lib/arc';
 
 const WS_URL = (import.meta.env.PUBLIC_WS_URL as string | undefined) ?? 'wss://ws.akipoly.xyz';
 const REQUEST_TIMEOUT_MS = 60_000;
+const PAYMENT_RETRY_MS = 10_000;
 
 type Outgoing = ClientMessage extends infer M ? (M extends { type: string } ? Omit<M, 'reqId'> : never) : never;
 type AuthOk = Extract<ServerMessage, { type: 'auth_ok' }>;
 
 /** The connection failed, not the server: the request may never have arrived. */
 export class NetworkError extends Error {}
+
+/** The server answered with an error. */
+export class ServerError extends Error {
+  constructor(
+    readonly code: string,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
+/** Worth sending again: it never arrived, or the payment tx isn't mined yet. */
+const isRetryable = (err: unknown) =>
+  err instanceof NetworkError || (err instanceof ServerError && err.code === 'PAYMENT_PENDING');
 
 /**
  * A request that reports an on-chain payment. Saved locally from the moment
@@ -33,7 +48,10 @@ export type PaidMessage = Extract<Outgoing, { type: 'lobby.ready' } | { type: 'g
 interface StoredPayment {
   userId: string;
   msg: PaidMessage;
+  savedAt?: number;
 }
+/** Stop retrying after this; the tx never landed (or the player must contact support). */
+const PAYMENT_GIVE_UP_MS = 30 * 60_000;
 const PAYMENTS_KEY = 'akipoly:unsubmitted-payments';
 function loadPayments(): StoredPayment[] {
   try {
@@ -200,7 +218,7 @@ export function GameSocketProvider({ children }: { children: ReactNode }) {
           if (p) {
             pending.current.delete(msg.reqId!);
             window.clearTimeout(p.timer);
-            if (msg.type === 'error') p.reject(new Error(msg.message));
+            if (msg.type === 'error') p.reject(new ServerError(msg.code, msg.message));
             else p.resolve(msg.type === 'ack' ? msg.data : msg);
             return;
           }
@@ -282,6 +300,16 @@ export function GameSocketProvider({ children }: { children: ReactNode }) {
   }, [session]);
   useEffect(syncPending, [syncPending]);
 
+  // Unanswered payments are retried on every reconnect and, while still
+  // connected (request timeout, receipt wait failed), on a short timer.
+  const [retryTick, setRetryTick] = useState(0);
+  const retryTimer = useRef<number | undefined>(undefined);
+  const scheduleRetry = useCallback(() => {
+    window.clearTimeout(retryTimer.current);
+    retryTimer.current = window.setTimeout(() => setRetryTick((t) => t + 1), PAYMENT_RETRY_MS);
+  }, []);
+  useEffect(() => () => window.clearTimeout(retryTimer.current), []);
+
   const paidRequest = useCallback(
     async (pay: (onSent: (txHash: string) => void) => Promise<string>, build: (txHash: string) => PaidMessage) => {
       if (!session) throw new Error('not signed in yet');
@@ -291,15 +319,18 @@ export function GameSocketProvider({ children }: { children: ReactNode }) {
         if (msg) return;
         msg = build(txHash);
         inFlight.current.add(txHash);
-        rememberPayment({ userId, msg });
+        rememberPayment({ userId, msg, savedAt: Date.now() });
         syncPending();
       };
       let txHash: string;
       try {
         txHash = await pay(remember);
       } catch (err) {
-        // Sent but unconfirmed: stays saved, the next reconnect reports it.
-        if (msg) inFlight.current.delete((msg as PaidMessage).txHash);
+        // Sent but unconfirmed: stays saved and is reported by the retry below.
+        if (msg) {
+          inFlight.current.delete((msg as PaidMessage).txHash);
+          scheduleRetry();
+        }
         throw err;
       }
       remember(txHash);
@@ -308,9 +339,10 @@ export function GameSocketProvider({ children }: { children: ReactNode }) {
         forgetPayment(txHash);
         return data;
       } catch (err) {
-        if (err instanceof NetworkError) {
+        if (isRetryable(err)) {
           // The money left the wallet; never invite a second payment.
-          throw new Error("payment sent — it'll be confirmed as soon as you're back online. no need to pay again.");
+          scheduleRetry();
+          throw new Error("payment sent — we'll keep confirming it automatically. no need to pay again.");
         }
         forgetPayment(txHash); // the server answered (and refunds anything it couldn't use)
         throw err;
@@ -319,22 +351,28 @@ export function GameSocketProvider({ children }: { children: ReactNode }) {
         syncPending();
       }
     },
-    [session, request, syncPending],
+    [session, request, syncPending, scheduleRetry],
   );
 
-  // After every (re)connect, report payments whose request never got an answer.
+  // Report payments whose request never got an answer: after every
+  // (re)connect, and on each scheduled retry while connected.
   useEffect(() => {
     if (status !== 'ready' || !session) return;
     for (const p of loadPayments()) {
       if (p.userId !== session.userId || inFlight.current.has(p.msg.txHash)) continue;
+      if (Date.now() - (p.savedAt ?? Date.now()) > PAYMENT_GIVE_UP_MS) {
+        forgetPayment(p.msg.txHash);
+        toast("couldn't confirm an earlier payment — check it on the explorer", txUrl(p.msg.txHash));
+        continue;
+      }
       inFlight.current.add(p.msg.txHash);
       request(p.msg)
         .then(() => {
           forgetPayment(p.msg.txHash);
-          toast('a payment from before the disconnect went through');
+          toast('your earlier payment went through');
         })
         .catch((err: Error) => {
-          if (err instanceof NetworkError) return; // try again next connect
+          if (isRetryable(err)) return scheduleRetry(); // and on the next connect
           forgetPayment(p.msg.txHash);
           if (!/already used/.test(err.message)) toast(`earlier payment: ${err.message}`);
         })
@@ -343,7 +381,7 @@ export function GameSocketProvider({ children }: { children: ReactNode }) {
           syncPending();
         });
     }
-  }, [status, session, request, toast, syncPending]);
+  }, [status, session, request, toast, syncPending, scheduleRetry, retryTick]);
 
   // First login: the token can predate the embedded wallet. Once the wallet
   // shows up, refresh the identity token and re-authenticate once.

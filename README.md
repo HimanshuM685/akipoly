@@ -92,7 +92,9 @@ git pull && docker compose up -d --build   # update
 ```
 
 The container listens on 8081 and is published on the host at `PORT` (or
-`WS_PORT`) from `backend/.env`, default 8081. Migrations run on every start;
+`WS_PORT`) from `backend/.env`, default 8081, on `127.0.0.1` only — nginx
+proxies `wss://` to it (Docker ports bypass ufw, so it is not exposed publicly).
+Set `BIND_ADDRESS=0.0.0.0` in `.env` only if nothing proxies it. Migrations run on every start;
 already-applied ones are skipped. Moving off pm2: run `pm2 delete akipoly-game`
 once so the port is free.
 
