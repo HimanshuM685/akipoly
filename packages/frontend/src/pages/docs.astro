@@ -1,0 +1,240 @@
+---
+import '../styles/global.css';
+import Waterwave from '../components/Waterwave.astro';
+
+const year = new Date().getFullYear();
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="what is akipoly? the property-trading board game, rebuilt for the screen and the new generation. on arc, with your friends. the short, honest explainer."
+    />
+    <meta name="theme-color" content="#FFF500" />
+    <link rel="icon" href="/icons/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48.png" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Chango&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="canonical" href="/docs" />
+    <title>akipoly — what is this thing?</title>
+    <script is:inline>
+      try {
+        if (sessionStorage.getItem('akipoly:wave-nav') === '1') {
+          document.documentElement.classList.add('wave-pending');
+        }
+      } catch {
+        /* private mode */
+      }
+    </script>
+  </head>
+  <body>
+    <!-- Three.js monopoly theme background -->
+    <canvas class="docs-field" aria-hidden="true"></canvas>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <main id="main" class="docs">
+      <div class="docs__top">
+        <a class="docs__back" href="/">
+          <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+            <path d="M12 3 6 9l6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          back to the site
+        </a>
+        <a class="docs__wordmark" href="/" aria-label="akipoly — back to the site">
+          <img src="/icons/akipoly-head@96.png" width="34" height="32" alt="" />
+          <span>akipoly</span>
+        </a>
+      </div>
+
+      <p class="docs__tldr">
+        tl;dr: the property-trading board game. on arc. with your friends. that's the whole pitch.
+      </p>
+
+      <h1 class="docs__title">what is<br /><span class="docs__hl">akipoly?</span></h1>
+
+      <section class="docs__section" aria-labelledby="docs-what">
+        <h2 id="docs-what">the short version</h2>
+        <p>
+          akipoly is the property-trading board game, rebuilt for the screen. the same
+          dice-rolling, street-snapping, rent-collecting chaos you know and love, moved into a
+          fast, loud, playful digital experience built on arc.
+        </p>
+        <p>
+          it was never about the cardboard. it was the people: the backstabs, the alliances that
+          last one round, the trade you brag about for months. akipoly keeps the social engine
+          and leaves the missing pieces and the family feuds about the rules.
+        </p>
+      </section>
+
+      <section class="docs__section" aria-labelledby="docs-how">
+        <h2 id="docs-how">what you actually do</h2>
+        <p>
+          you roll the dice. you buy streets. you build your empire. you bankrupt your friends
+          (or they bankrupt you). it's the same triangle it has always been:
+        </p>
+        <ul class="docs__list">
+          <li><strong>buy</strong> — claim your place on the board.</li>
+          <li><strong>build</strong> — turn your moves into an empire.</li>
+          <li><strong>compete</strong> — challenge your friends and win loudly.</li>
+        </ul>
+        <p>no lengthy rulebook required. you know the game. we know you know the game.</p>
+      </section>
+
+      <section class="docs__section" aria-labelledby="docs-arc">
+        <h2 id="docs-arc">why arc?</h2>
+        <p>
+          because on arc, this isn't just a game you play, it's a place you play through. your
+          properties, your pieces and your wins are recorded on arc, the chain akipoly calls
+          home. bought is bought. no landlord's spreadsheet reaches here.
+        </p>
+      </section>
+
+      <section class="docs__section" aria-labelledby="docs-who">
+        <h2 id="docs-who">who is this for?</h2>
+        <p>
+          people who have ever flipped a board. people who collect things on the internet.
+          people who want bragging rights, no meetings, and exactly three apologies per session.
+        </p>
+      </section>
+
+      <section class="docs__section" aria-labelledby="docs-when">
+        <h2 id="docs-when">when does it launch?</h2>
+        <p>
+          when it's ready. no fake dates, no manufactured suspense. the waitlist hears first,
+          because that's what the waitlist is for. if you want to know the moment the dice are
+          warm, that's the door.
+        </p>
+      </section>
+
+      <section class="docs__section" aria-labelledby="docs-fine-print">
+        <h2 id="docs-fine-print">the fine print</h2>
+        <p>
+          akipoly is an independent project, built from scratch, in the spirit of the classic
+          property-trading board game. it is not affiliated with any classic board game or its
+          publisher. artwork and everything else here is original.
+        </p>
+      </section>
+
+      <div class="docs__cta">
+        <a class="btn btn--lg" href="/">join the waitlist</a>
+      </div>
+
+      <p class="docs__legal">© {year} akipoly. all rights reserved.</p>
+
+      <aside class="docs__signoff" aria-label="A note from the team">
+        <p class="docs__signoff-line">gng, read arc's whitepaper at</p>
+        <a
+          class="docs__signoff-link"
+          href="https://6778953.fs1.hubspotusercontent-na1.net/hubfs/6778953/Arc%20Litepaper%20-%202025.pdf"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="read arc's whitepaper (pdf, opens in a new tab)"
+        >https://6778953.fs1.hubspotusercontent-na1.net/hubfs/6778953/Arc%20Litepaper%20-%202025.pdf</a>
+        <p class="docs__signoff-kick">and <span class="page__hl">don't bet your life here!</span></p>
+      </aside>
+    </main>
+    <Waterwave />
+    <script>
+      import * as THREE from 'three';
+
+      const canvas = document.querySelector('.docs-field');
+      if (!canvas) throw new Error('DocsField: canvas not found');
+
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      const scene = new THREE.Scene();
+      scene.background = null;
+      const camera = new THREE.PerspectiveCamera(60, canvas.clientWidth / canvas.clientHeight, 0.1, 100);
+      camera.position.z = 12;
+
+      const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+      renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+      const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+      scene.add(ambient);
+      const dir = new THREE.DirectionalLight(0xffffff, 0.8);
+      dir.position.set(5, 10, 7);
+      scene.add(dir);
+
+      const group = new THREE.Group();
+      scene.add(group);
+
+      const colors = [0xfff500, 0x9db7fb, 0xff6b4a, 0xb8f28b, 0xff80b5, 0xa78bfa];
+      const diceGeo = new THREE.BoxGeometry(0.7, 0.7, 0.7);
+      const diceMat = (color: number) => new THREE.MeshStandardMaterial({ color, flatShading: true });
+
+      const dice = [] as THREE.Mesh[];
+      const count = reduced ? 3 : 8;
+
+      for (let i = 0; i < count; i++) {
+        const mesh = new THREE.Mesh(diceGeo, diceMat(colors[i % colors.length]));
+        mesh.position.set(
+          (Math.random() - 0.5) * 20,
+          (Math.random() - 0.5) * 12,
+          (Math.random() - 0.5) * 5
+        );
+        mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
+        mesh.userData = {
+          drift: new THREE.Vector3((Math.random() - 0.5) * 0.015, (Math.random() - 0.5) * 0.015, (Math.random() - 0.5) * 0.015),
+          spin: new THREE.Vector3((Math.random() - 0.5) * 0.01, (Math.random() - 0.5) * 0.01, (Math.random() - 0.5) * 0.01),
+          floatOffset: Math.random() * Math.PI * 2,
+        };
+        group.add(mesh);
+        dice.push(mesh);
+      }
+
+      const edgesGeo = new THREE.EdgesGeometry(diceGeo);
+      const edgesMat = new THREE.LineBasicMaterial({ color: 0x171717, linewidth: 2 });
+
+      function raf() {
+        if (!reduced) {
+          const t = performance.now() * 0.001;
+          dice.forEach((m) => {
+            m.position.x += m.userData.drift.x;
+            m.position.y += m.userData.drift.y;
+            m.position.z += Math.sin(t + m.userData.floatOffset) * 0.008;
+            m.rotation.x += m.userData.spin.x;
+            m.rotation.y += m.userData.spin.y;
+            m.rotation.z += m.userData.spin.z;
+            if (m.position.x > 11) m.position.x = -11;
+            if (m.position.x < -11) m.position.x = 11;
+            if (m.position.y > 7) m.position.y = -7;
+            if (m.position.y < -7) m.position.y = 7;
+          });
+        }
+        renderer.render(scene, camera);
+        requestAnimationFrame(raf);
+      }
+      raf();
+
+      const onResize = () => {
+        camera.aspect = canvas.clientWidth / canvas.clientHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+      };
+      window.addEventListener('resize', onResize);
+    </script>
+    <style>
+      .docs-field {
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        pointer-events: none;
+        width: 100vw;
+        height: 100vh;
+        display: block;
+      }
+    </style>
+  </body>
+</html>

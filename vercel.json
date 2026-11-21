@@ -1,6 +1,6 @@
 {
-  "buildCommand": "npm run build",
-  "devCommand": "npm run dev",
+  "buildCommand": "turbo run build --filter=@akipoly/frontend",
+  "devCommand": "turbo run dev",
   "installCommand": "npm install",
   "framework": "astro",
   "regions": ["iad1"]
