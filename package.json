@@ -1,16 +1,30 @@
 {
   "name": "akipoly",
-  "private": true,
-  "workspaces": ["packages/*"],
-  "packageManager": "npm@10.9.2",
+  "type": "module",
+  "version": "0.1.0",
+  "description": "akipoly - the property-trading board game reimagined as an arcade GameFi. Single-page waitlist site with one serverless endpoint.",
   "scripts": {
-    "dev": "turbo run dev",
-    "build": "turbo run build",
-    "start": "turbo run start --parallel",
-    "typecheck": "turbo run typecheck",
-    "test": "turbo run test"
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check": "astro check",
+    "typecheck": "astro check"
+  },
+  "dependencies": {
+    "@astrojs/react": "^7.1.9",
+    "@astrojs/vercel": "^11.0.22",
+    "@privy-io/react-auth": "^3.52.0",
+    "astro": "^7.4.12",
+    "pg": "^8.23.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "three": "^0.187.0",
+    "viem": "^2.58.2"
   },
   "devDependencies": {
-    "turbo": "^2.4.2"
+    "@astrojs/check": "^0.9.12",
+    "@types/node": "^22.20.5",
+    "@types/pg": "^8.23.1",
+    "typescript": "^5.9.3"
   }
 }

@@ -1,0 +1,31 @@
+
+> akipoly@0.1.0 dev
+> astro dev
+
+{"message":"connected.","label":"vite","level":"info"}
+{"message":"Generated 1ms","label":"types","level":"info"}
+{"message":"connected.","label":"vite","level":"info"}
+{"message":"Re-optimizing dependencies because lockfile has changed","label":"vite","level":"info"}
+{"message":" astro  v7.4.12 ready in 860 ms\n┃ Local    http://localhost:4321/\n┃ Network  use --host to expose","label":"SKIP_FORMAT","level":"info"}
+{"message":"watching for file changes...","label":null,"level":"info"}
+{"message":"[optimizer] bundling dependencies...","label":"vite","level":"info"}
+{"message":"Blocked cross-origin request to / (Sec-Fetch-Site: cross-site, Sec-Fetch-Mode: cors). Cross-origin subresource requests are not allowed on the dev server for security reasons.","label":"router","level":"warn"}
+{"message":"[200] / 63ms","label":null,"level":"info"}
+{"message":"[200] /dashboard 30ms","label":null,"level":"info"}
+{"message":"[200] HEAD /dashboard 5ms","label":null,"level":"info"}
+{"message":"[200] HEAD /dashboard 4ms","label":null,"level":"info"}
+{"message":"[200] /dashboard 3ms","label":null,"level":"info"}
+{"message":"[200] HEAD /dashboard 6ms","label":null,"level":"info"}
+{"message":"[200] HEAD /dashboard 3ms","label":null,"level":"info"}
+{"message":"[200] /dashboard 3ms","label":null,"level":"info"}
+{"message":"[200] HEAD /dashboard 6ms","label":null,"level":"info"}
+{"message":"[200] HEAD /dashboard 4ms","label":null,"level":"info"}
+{"message":"[200] /dashboard 3ms","label":null,"level":"info"}
+{"message":"[200] HEAD /dashboard 3ms","label":null,"level":"info"}
+{"message":"[200] HEAD /dashboard 4ms","label":null,"level":"info"}
+{"message":"[200] /api/lobbies 5077ms","label":null,"level":"info"}
+{"message":"[200] / 3ms","label":null,"level":"info"}
+{"message":"[200] / 12ms","label":null,"level":"info"}
+{"message":"[200] / 58ms","label":null,"level":"info"}
+{"message":"/src/styles/global.css","label":"watch","level":"info"}
+{"message":"[200] / 28ms","label":null,"level":"info"}
