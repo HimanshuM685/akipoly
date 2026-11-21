@@ -108,8 +108,10 @@ Postgres, 5 s betting / 1 s rolling):
 Pushes are debounced 50 ms on purpose. On Neon add the network round trip per
 query; keep `DB_POOL_MAX=10` for ~100 players and raise to 20 past ~300 or if
 `/health` shows `db.waiting > 0`. Run it yourself (throwaway DB only):
-`docker compose -f docker-compose.loadtest.yml run --rm loadtest`, then
-`docker compose -f docker-compose.loadtest.yml down -v`.
+`docker compose -p akipoly-loadtest -f docker-compose.loadtest.yml run --rm loadtest`, then
+`docker compose -p akipoly-loadtest -f docker-compose.loadtest.yml down -v`. If you
+ran it before it had its own project name, remove the old db once with
+`docker rm -fv backend-db-1`.
 
 Limits: 5 sockets per player (oldest tab closed), `MAX_CONNECTIONS` total
 (default 2000), slow clients over 1 MB of unsent data are dropped. One instance

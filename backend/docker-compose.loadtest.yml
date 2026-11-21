@@ -1,6 +1,10 @@
 # Load test against a throwaway Postgres (never your real DATABASE_URL):
-#   docker compose -f docker-compose.loadtest.yml run --rm loadtest
-#   docker compose -f docker-compose.loadtest.yml down -v
+#   docker compose -p akipoly-loadtest -f docker-compose.loadtest.yml run --rm loadtest
+#   docker compose -p akipoly-loadtest -f docker-compose.loadtest.yml down -v
+# Own project name so it doesn't share a network with the real server. `name:`
+# loses to COMPOSE_PROJECT_NAME, so the commands above pin it with -p too.
+# Ran it before the rename? Remove the old db once: docker rm -fv backend-db-1
+name: akipoly-loadtest
 services:
   db:
     image: postgres:16-alpine
