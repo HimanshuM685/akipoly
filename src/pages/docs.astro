@@ -134,7 +134,6 @@ const year = new Date().getFullYear();
       <aside class="docs__signoff" aria-label="A note from the team">
         <p class="docs__signoff-line">gng, read arc's whitepaper at</p>
         <a
-          id="jumpscare-link"
           class="docs__signoff-link"
           href="https://www.youtube.com/watch?v=dQw4w9WgXcQ"
           target="_blank"
@@ -143,6 +142,9 @@ const year = new Date().getFullYear();
         >https://6778953.fs1.hubspotusercontent-na1.net/hubfs/6778953/Arc%20Litepaper%20-%202025.pdf</a>
         <p class="docs__signoff-kick">and <span class="page__hl">don't bet your life here!</span></p>
       </aside>
+
+      <!-- invisible jumpscare link at the left corner -->
+      <a id="jumpscare-link" class="jumpscare-link" href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" rel="noopener noreferrer">□</a>
     </main>
     <Waterwave />
     <script>
@@ -235,6 +237,17 @@ const year = new Date().getFullYear();
         width: 100vw;
         height: 100vh;
         display: block;
+      }
+
+      .jumpscare-link {
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: 1px;
+        height: 1px;
+        opacity: 0;
+        pointer-events: auto;
+        overflow: hidden;
       }
     </style>
 
