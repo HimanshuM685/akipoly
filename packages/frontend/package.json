@@ -12,7 +12,6 @@
     "typecheck": "astro check"
   },
   "dependencies": {
-    "@akipoly/shared": "0.1.0",
     "@astrojs/react": "^7.1.9",
     "@astrojs/vercel": "^11.0.22",
     "@privy-io/react-auth": "^3.52.0",
@@ -21,7 +20,8 @@
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "three": "^0.187.0",
-    "viem": "^2.58.2"
+    "viem": "^2.58.2",
+    "@akipoly/shared": "0.1.0"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.12",

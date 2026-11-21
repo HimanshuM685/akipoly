@@ -9,6 +9,3 @@ dist/
 .vercel
 /graphify-out
 !.env.example
-/.turbo
-/packages/frontend/.turbo
-packages/backend/.turbo/turbo-build.log
