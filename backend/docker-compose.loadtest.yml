@@ -1,0 +1,24 @@
+# Load test against a throwaway Postgres (never your real DATABASE_URL):
+#   docker compose -f docker-compose.loadtest.yml run --rm loadtest
+#   docker compose -f docker-compose.loadtest.yml down -v
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_PASSWORD: loadtest
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 2s
+      retries: 30
+  loadtest:
+    build:
+      context: .
+      target: build # the stage with dev deps (tsx) and sources
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://postgres:loadtest@db:5432/postgres
+      LOADTEST_TABLES: ${LOADTEST_TABLES:-10}
+      LOADTEST_PLAYERS: ${LOADTEST_PLAYERS:-10}
+    command: ["npm", "run", "loadtest"]

@@ -8,7 +8,7 @@
 import { pool, withTx } from '../db/pool.js';
 import { advanceRound, type RoundRow } from '../services/game.js';
 import { startDueLobby } from '../services/lobby.js';
-import { events, lobbiesChanged } from '../events.js';
+import { events, lobbiesChanged, lobbyChanged } from '../events.js';
 import { log } from '../log.js';
 
 // While rows are scheduled, re-check at least this often (clock safety net).
@@ -28,7 +28,7 @@ async function advanceDueRounds(): Promise<number> {
   );
   for (const { id } of due.rows) {
     try {
-      const lobbyId = await withTx(async (c) => {
+      const changed = await withTx(async (c) => {
         const round = (
           await c.query<RoundRow>(
             `select r.id, r.game_id, g.lobby_id, g.pot, r.round_number, r.phase, r.prev_ball, r.ball, r.seed, r.phase_ends_at
@@ -39,10 +39,12 @@ async function advanceDueRounds(): Promise<number> {
           )
         ).rows[0];
         if (!round) return null;
-        await advanceRound(c, round);
-        return round.lobby_id;
+        const { finished } = await advanceRound(c, round);
+        return { lobbyId: round.lobby_id, finished };
       });
-      if (lobbyId) lobbiesChanged([lobbyId]);
+      // Phase changes only matter to that table; a finished game also leaves the list.
+      if (changed?.finished) lobbiesChanged([changed.lobbyId]);
+      else if (changed) lobbyChanged(changed.lobbyId);
     } catch (err) {
       failed += 1;
       log.error({ err, roundId: id }, 'advancing round failed');

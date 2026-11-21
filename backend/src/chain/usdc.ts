@@ -25,7 +25,9 @@ const chain: Chain = arc.network === 'mainnet' ? arcMainnet : arcTestnet;
 const transport = http(arc.rpcUrl, { retryCount: 3, timeout: 15_000 });
 const account = privateKeyToAccount(env.TREASURY_PRIVATE_KEY as Hash);
 
-export const publicClient = createPublicClient({ chain, transport });
+// Arc finalizes in under a second; poll receipts fast so payment checks
+// finish in ~1s instead of holding requests open for several.
+export const publicClient = createPublicClient({ chain, transport, pollingInterval: 500 });
 const walletClient = createWalletClient({ chain, transport, account });
 
 export const treasuryAddress: Address = account.address;

@@ -8,6 +8,8 @@ COPY package.json package-lock.json ./
 RUN npm ci
 COPY tsconfig.json ./
 COPY src ./src
+COPY migrations ./migrations
+COPY scripts ./scripts
 RUN npm run build
 
 # ---- runtime: production deps + compiled output only --------------------

@@ -94,7 +94,26 @@ git pull && docker compose up -d --build   # update
 The container listens on 8081 and is published on the host at `PORT` (or
 `WS_PORT`) from `backend/.env`, default 8081, on `127.0.0.1` only — nginx
 proxies `wss://` to it (Docker ports bypass ufw, so it is not exposed publicly).
-Set `BIND_ADDRESS=0.0.0.0` in `.env` only if nothing proxies it. Migrations run on every start;
+Set `BIND_ADDRESS=0.0.0.0` in `.env` only if nothing proxies it.
+
+**Capacity.** One container serves well over 100 concurrent players
+(`backend/scripts/loadtest.ts`, real services + scheduler + push hub, local
+Postgres, 5 s betting / 1 s rolling):
+
+| players | games | `placePick` p95 | change → push p95 | phase lateness p95 | pool waiting max |
+| ------- | ----- | --------------- | ----------------- | ------------------ | ---------------- |
+| 100     | 10/10 | 6 ms            | 60 ms             | 68 ms              | 0                |
+| 500     | 50/50 | 5 ms            | 58 ms             | 135 ms             | 41 (pool 10)     |
+
+Pushes are debounced 50 ms on purpose. On Neon add the network round trip per
+query; keep `DB_POOL_MAX=10` for ~100 players and raise to 20 past ~300 or if
+`/health` shows `db.waiting > 0`. Run it yourself (throwaway DB only):
+`docker compose -f docker-compose.loadtest.yml run --rm loadtest`, then
+`docker compose -f docker-compose.loadtest.yml down -v`.
+
+Limits: 5 sockets per player (oldest tab closed), `MAX_CONNECTIONS` total
+(default 2000), slow clients over 1 MB of unsent data are dropped. One instance
+by design — the treasury must have exactly one signer. Migrations run on every start;
 already-applied ones are skipped. Moving off pm2: run `pm2 delete akipoly-game`
 once so the port is free.
 

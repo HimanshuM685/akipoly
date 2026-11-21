@@ -27,7 +27,15 @@ export const events = {
   },
 };
 
-/** Emit lobby + lobby-list changes for a set of lobbies touched by a tx. */
+/**
+ * One table changed in a way the lobby list doesn't show (a call, a phase
+ * change): only that table's watchers are refreshed.
+ */
+export function lobbyChanged(id: string) {
+  events.emit('lobby', id);
+}
+
+/** Lobby + lobby-list changes (seats, readiness, status) for lobbies touched by a tx. */
 export function lobbiesChanged(ids: Iterable<string>) {
   for (const id of new Set(ids)) events.emit('lobby', id);
   events.emit('lobbies');

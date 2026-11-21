@@ -46,6 +46,8 @@ const schema = z.object({
   ROLLING_MS: z.coerce.number().int().min(1000).max(10000).default(3500),
   START_COUNTDOWN_MS: z.coerce.number().int().min(0).max(30000).default(3000),
   MAX_ROUNDS: z.coerce.number().int().min(1).max(500).default(50),
+  /** Hard cap on open sockets; further upgrades get 503 (bounds memory). */
+  MAX_CONNECTIONS: z.coerce.number().int().min(10).max(100_000).default(2000),
 });
 
 // Backwards-compatible names from the previous .env layout.

@@ -9,6 +9,15 @@ import { events } from '../events.js';
 import { log } from '../log.js';
 import type { ServerMessage } from '../shared/protocol.js';
 
+/** A client this far behind is dropped instead of buffered without limit. */
+const MAX_BUFFERED_BYTES = 1024 * 1024;
+/** Tabs per user; the oldest is closed (4000) when a newer one authenticates. */
+const MAX_SOCKETS_PER_USER = 5;
+export const CLOSE_OPENED_ELSEWHERE = 4000;
+
+export const serialize = (msg: ServerMessage) =>
+  JSON.stringify(msg, (_k, v) => (typeof v === 'bigint' ? v.toString() : v));
+
 export class Session {
   userId: string | null = null;
   walletAddress: string | null = null;
@@ -18,8 +27,18 @@ export class Session {
   constructor(readonly socket: WebSocket) {}
 
   send(msg: ServerMessage): void {
+    this.sendRaw(serialize(msg));
+  }
+
+  /** Send an already-serialized message (fan-out serializes once for everyone). */
+  sendRaw(data: string): void {
     if (this.socket.readyState !== WebSocket.OPEN) return;
-    this.socket.send(JSON.stringify(msg, (_k, v) => (typeof v === 'bigint' ? v.toString() : v)));
+    if (this.socket.bufferedAmount > MAX_BUFFERED_BYTES) {
+      log.warn({ userId: this.userId }, 'dropping slow client');
+      this.socket.terminate();
+      return;
+    }
+    this.socket.send(data);
   }
 }
 
@@ -32,6 +51,13 @@ export function bindUser(s: Session): void {
   const set = byUser.get(s.userId) ?? new Set();
   set.add(s);
   byUser.set(s.userId, set);
+  // Set keeps insertion order, so the first entries are the oldest tabs.
+  for (const old of set) {
+    if (set.size <= MAX_SOCKETS_PER_USER) break;
+    if (old === s) continue;
+    set.delete(old);
+    old.socket.close(CLOSE_OPENED_ELSEWHERE, 'opened elsewhere');
+  }
 }
 
 export function unwatchLobby(s: Session): void {
@@ -71,8 +97,10 @@ async function pushLobbyTo(lobbyId: string, sessions: Iterable<Session>): Promis
   const lobby = await lobbyView(pool, lobbyId);
   const game = lobby?.gameId ? await loadGame(pool, lobby.gameId) : null;
   const serverNow = Date.now();
+  const lobbyMsg = serialize({ type: 'lobby', lobby, serverNow });
   for (const s of sessions) {
-    s.send({ type: 'lobby', lobby, serverNow });
+    s.sendRaw(lobbyMsg);
+    // Game views differ per player (`me`), so those are serialized per socket.
     if (game) s.send({ type: 'game', game: gameViewFor(game, s.userId), serverNow });
   }
 }
@@ -102,7 +130,8 @@ events.on('lobbies', () => {
     listFlush = null;
     listLobbies(pool)
       .then((lobbies) => {
-        for (const s of listWatchers) s.send({ type: 'lobbies', lobbies });
+        const msg = serialize({ type: 'lobbies', lobbies });
+        for (const s of listWatchers) s.sendRaw(msg);
       })
       .catch((err) => log.error({ err }, 'push lobby list failed'));
   }, 150);

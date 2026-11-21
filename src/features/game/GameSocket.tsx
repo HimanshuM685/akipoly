@@ -18,6 +18,8 @@ import { formatUsdc, txUrl } from '../../lib/arc';
 const WS_URL = (import.meta.env.PUBLIC_WS_URL as string | undefined) ?? 'wss://ws.akipoly.xyz';
 const REQUEST_TIMEOUT_MS = 60_000;
 const PAYMENT_RETRY_MS = 10_000;
+/** Matches CLOSE_OPENED_ELSEWHERE in backend/src/ws/hub.ts. */
+const CLOSE_OPENED_ELSEWHERE = 4000;
 
 type Outgoing = ClientMessage extends infer M ? (M extends { type: string } ? Omit<M, 'reqId'> : never) : never;
 type AuthOk = Extract<ServerMessage, { type: 'auth_ok' }>;
@@ -249,12 +251,18 @@ export function GameSocketProvider({ children }: { children: ReactNode }) {
           console.error('[ws] bad message', err);
         }
       };
-      ws.onclose = () => {
+      ws.onclose = (event) => {
         if (wsRef.current === ws) wsRef.current = null;
         failAll('connection lost — try again');
         setSession(null);
         if (closedByUs) return;
         setStatus('offline');
+        // Server closed this tab because newer tabs took over; reconnecting
+        // would just kick one of them out in turn.
+        if (event.code === CLOSE_OPENED_ELSEWHERE) {
+          toast('akipoly is open in another tab — reload this one to play here');
+          return;
+        }
         const delay = Math.min(15_000, 1000 * 2 ** retry++);
         retryTimer = window.setTimeout(connect, delay);
       };
