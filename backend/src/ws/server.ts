@@ -28,7 +28,11 @@ export function attachWebSocket(server: Server): WebSocketServer {
   const wss = new WebSocketServer({
     server,
     maxPayload: 16 * 1024,
-    verifyClient: (info: { req: IncomingMessage }) => originAllowed(info.req),
+    verifyClient: (info: { req: IncomingMessage }, done: (ok: boolean, code?: number, message?: string) => void) => {
+      if (!originAllowed(info.req)) return done(false, 403, 'origin not allowed');
+      if (wss.clients.size >= env.MAX_CONNECTIONS) return done(false, 503, 'server full');
+      done(true);
+    },
   });
 
   wss.on('connection', (socket) => {

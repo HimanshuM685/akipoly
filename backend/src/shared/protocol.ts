@@ -208,6 +208,8 @@ export type ErrorCode =
   | 'CONFLICT'
   | 'NO_WALLET'
   | 'PAYMENT_INVALID'
+  /** Tx not mined/visible yet — retry the same request later. */
+  | 'PAYMENT_PENDING'
   | 'RATE_LIMITED'
   | 'INTERNAL';
 

@@ -1,16 +1,19 @@
 # Akipoly game server. Build + run: docker compose up -d --build
+# Node is pinned to an exact version; bump both FROM lines on purpose.
 
 # ---- build: compile TypeScript ------------------------------------------
-FROM node:22-alpine AS build
+FROM node:22.23.1-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY tsconfig.json ./
 COPY src ./src
+COPY migrations ./migrations
+COPY scripts ./scripts
 RUN npm run build
 
 # ---- runtime: production deps + compiled output only --------------------
-FROM node:22-alpine
+FROM node:22.23.1-alpine
 ENV NODE_ENV=production \
     PORT=8081
 WORKDIR /app

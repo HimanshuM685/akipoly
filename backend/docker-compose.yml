@@ -13,7 +13,10 @@ services:
       PORT: "8081"
     ports:
       # ...and is published on the host at PORT / WS_PORT from backend/.env (default 8081).
-      - "${PORT:-${WS_PORT:-8081}}:8081"
+      # Loopback only by default: nginx in front terminates wss and proxies to it.
+      # Docker-published ports bypass ufw, so 0.0.0.0 would expose plain ws to
+      # the internet. Set BIND_ADDRESS=0.0.0.0 in .env only if nothing proxies it.
+      - "${BIND_ADDRESS:-127.0.0.1}:${PORT:-${WS_PORT:-8081}}:8081"
     restart: unless-stopped
     init: true
     stop_grace_period: 15s

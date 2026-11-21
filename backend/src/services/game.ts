@@ -21,7 +21,7 @@ import {
 } from '../domain/rules.js';
 import { incomingTransferTotal } from '../chain/usdc.js';
 import { AppError, badRequest, conflict, notFound } from '../errors.js';
-import { lobbiesChanged } from '../events.js';
+import { lobbyChanged } from '../events.js';
 import { enqueuePayouts, recordTransfer } from './payouts.js';
 import type { Direction } from '../shared/protocol.js';
 
@@ -93,25 +93,29 @@ async function openRound(c: pg.PoolClient, gameId: string, roundNumber: number, 
   );
 }
 
-/** Advance a due round by one phase. Round row must be locked. */
-export async function advanceRound(c: pg.PoolClient, round: RoundRow): Promise<void> {
+/**
+ * Advance a due round by one phase. Round row must be locked.
+ * Returns whether this finished the game (the lobby list then changes too).
+ */
+export async function advanceRound(c: pg.PoolClient, round: RoundRow): Promise<{ finished: boolean }> {
   if (round.phase === 'betting') {
     const ball = deriveBall(round.seed, round.game_id, round.round_number);
     await c.query(
       `update public.rounds set phase = 'rolling', ball = $2, phase_ends_at = now() + $3::interval where id = $1`,
       [round.id, ball, ms(env.ROLLING_MS)],
     );
-    return;
+    return { finished: false };
   }
-  if (round.phase === 'rolling') await settleRound(c, round);
+  return { finished: round.phase === 'rolling' && (await settleRound(c, round)) };
 }
 
-async function settleRound(c: pg.PoolClient, round: RoundRow): Promise<void> {
+/** Returns true when this round ended the game. */
+async function settleRound(c: pg.PoolClient, round: RoundRow): Promise<boolean> {
   const ball = round.ball!;
   if (round.round_number === 0) {
     await c.query(`update public.rounds set phase = 'settled', outcome = 'opening' where id = $1`, [round.id]);
     await openRound(c, round.game_id, 1, ball);
-    return;
+    return false;
   }
 
   const alive = (
@@ -153,9 +157,10 @@ async function settleRound(c: pg.PoolClient, round: RoundRow): Promise<void> {
 
   if (isGameOver(survivors.length, round.round_number, env.MAX_ROUNDS)) {
     await finishGame(c, round, survivors, alive);
-  } else {
-    await openRound(c, round.game_id, round.round_number + 1, ball);
+    return true;
   }
+  await openRound(c, round.game_id, round.round_number + 1, ball);
+  return false;
 }
 
 async function finishGame(c: pg.PoolClient, round: RoundRow, survivors: string[], lastRoundPlayers: string[]) {
@@ -267,6 +272,6 @@ export async function placePick(req: PickRequest): Promise<void> {
     return round!.lobby_id;
   });
 
-  if (lobbyId) lobbiesChanged([lobbyId]);
+  if (lobbyId) lobbyChanged(lobbyId); // a call doesn't change the lobby list
   if (rejection) throw rejection;
 }
