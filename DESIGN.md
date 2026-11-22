@@ -9,19 +9,20 @@
 ## Creative direction
 
 **World name:** Electric Playground — a bright neobrutalist arcade GameFi waitlist page. **One
-viewport, one action.** **One line:** the official wordmark on a warm-ivory dot grid, the user-pinned
-line "we create monopoly on arc" with a yellow marker on "monopoly", and email → JOIN THE WAITLIST.
-The page refuses category defaults: no gradient-blob crypto hero, no orb, no LED-grid gloss, no
-scroll-to-learn marketing page, no nav, no footer navigation. One action, one page.
+action:** email → JOIN THE WAITLIST. **One line:** "Roll. Trade. Own the Arc." with a yellow marker
+on "Own the Arc.". The home page is a split hero on a plain warm-ivory ground: copy and form on the
+left, a flat sunburst medallion (rotating "ROLL • TRADE • OWN" ring around the wordmark) on the
+right, then three Roll / Trade / Own cards and a scrolling ticker band. The page refuses category
+defaults: no gradient-blob crypto hero, no 3D orb, no LED-grid gloss, no nav, no footer navigation.
 
-**Upstream deviations (deliberate, user-pinned):**
+**Revisions (user-directed, 2026-11-23) to earlier pins:**
 
-- Display face is **Chango** — not the upstream Brick Sans (commercial, unavailable), not the
-  earlier Archivo Black placeholder; user picked Chango 2026-11-18. (Chango is used sparingly — the
-  artwork itself carries the display voice; only the fine print and panel headings are set in the
-  body face.)
-- The single-screen structure is user-pinned (2026-11-18): logo, tagline, email form, legal line.
-  Upstream sections (hero/about/showcase/nav/footer) were removed by explicit user decision.
+- Tagline "we create monopoly on arc" → **"Roll. Trade. Own the Arc."**
+- Single-screen / one-viewport structure and the 0.8 `zoom` → removed; the page is full size and
+  scrolls slightly (hero + step cards + ticker).
+- Display face Chango → Bagel Fat One → Pixelify Sans → **Jersey 25** (pixel-style, fine pixel grid
+  so it stays readable); body face Space Grotesk → **Bricolage Grotesque**.
+- Dot-grid background removed; floating 3D dice (Three.js canvas) removed.
 
 ## Colour
 
@@ -29,18 +30,18 @@ Tokens from `:root` — hex values are exact:
 
 | Token | Value | Role in this build |
 |---|---|---|
-| `--color-primary` | `#FFF500` | Electric Yellow. JOIN THE WAITLIST button, input hard shadow, headline marker on "monopoly", selection |
-| `--color-secondary` | `#9DB7FB` | Periwinkle. Decorative sparkle |
-| `--color-action` | `#FF6B4A` | Tangerine. Reserved |
-| `--color-success` | `#B8F28B` | Lime Mint. Success panel |
-| `--color-reward` | `#FF80B5` | Bubblegum Pink. Decorative sparkle |
+| `--color-primary` | `#FFF500` | Electric Yellow. JOIN THE WAITLIST button, input hard shadow, headline marker on "Own the Arc.", sunburst disc, "Roll" card, selection |
+| `--color-secondary` | `#9DB7FB` | Periwinkle. Form card, sparkle |
+| `--color-action` | `#FF6B4A` | Tangerine. Badge status dot |
+| `--color-success` | `#B8F28B` | Lime Mint. Success panel, "Own" card |
+| `--color-reward` | `#FF80B5` | Bubblegum Pink. "Trade" card, sparkle |
 | `--color-special` | `#A78BFA` | Electric Violet. Decorative sparkle |
 | `--color-ink` | `#171717` | Ink Black. Text, borders, hard shadows |
-| `--color-paper` | `#FFFDF2` | Warm Ivory. Page ground (with dot grid) |
+| `--color-paper` | `#FFFDF2` | Warm Ivory. Page ground (plain, no pattern) |
 | `--color-white` | `#FFFFFF` | White. Email input |
 
-Accent discipline: the four accents appear at most once each as corner sparkles. Yellow is
-reserved for the single action and the one marker behind "monopoly".
+Accent discipline: accents are flat fills only (no gradients). Yellow marks the primary action,
+the headline marker and the medallion; periwinkle/pink/mint fill the form card and step cards.
 
 **Focus rings:** light surfaces (paper/white) — `3px solid var(--color-ink)`, 3px offset; ink on
 ivory/white is the highest-contrast pair in the system. Skip link (ink fill) — yellow ring.
@@ -52,12 +53,13 @@ carries a check glyph.
 
 | Token | Value | Use |
 |---|---|---|
-| `--font-display` | `"Chango", "Arial Black", sans-serif` | The three buy/build/compete emphasis words in the docs list. Everything else is set in the body face; the artwork carries the display voice. |
-| `--font-body` | `"Space Grotesk", "Segoe UI", sans-serif` | Everything set in type: tagline, labels, buttons, fineprint, legal |
+| `--font-display` | `"Jersey 25", "Arial Black", sans-serif` | Home headline, step-card titles, medallion ring text, ticker, docs emphasis words. Single weight (400) — never faux-bold it. |
+| `--font-body` | `"Bricolage Grotesque", "Segoe UI", sans-serif` | Subline, labels, buttons, fineprint, legal |
 
-Both load from Google Fonts with preconnect. No other families.
+Both load from Google Fonts with preconnect (index, docs and play pages). No other families.
 
-- Tagline `clamp(1.05rem, 3vw, 1.4rem)` 700 · legal 0.75rem (ink 60%) · fineprint 0.8rem (ink 62%)
+- Headline `clamp(3.2rem, 7.4vw, 6rem)` / 1.02 · subline `clamp(1rem, 1.6vw, 1.15rem)` 500 ·
+  legal 0.75rem (ink 60%) · fineprint 0.8rem
 - Labels & buttons 0.78–0.95rem, 700, uppercase, ls 0.06–0.14em
 - Body 16px / 1.6
 
@@ -65,17 +67,14 @@ Rules: sentence case for prose; uppercase only for short labels and buttons; two
 
 ## Layout & spacing
 
-- `.page`: `height: 100%` of `html, body { height: 100% }`, flex column, centred, `overflow: auto`
-  (scrolls internally only on very short viewports), fluid vertical padding. **The whole
-  composition renders at `zoom: 0.8`** (user-pinned 2026-11-18 — "make everything 0.2x smaller;
-  it'll add more empty spaces around"). Viewport units are not used for height for exactly this
-  reason. The skip link sits outside the zoomed shell and stays full size. Do not "fix" the
-  whitespace or the zoom.
-- Composition order: h1 > wordmark → tagline → form (560px max) → fineprint, legal line pinned to
-  the bottom via `margin-top: auto`.
-- Reading widths: form 560px; legal 60ch.
-- Body ground: `radial-gradient(rgba(23,23,23,0.09) 1.4px, transparent 1.4px)` at 26px — a dot
-  **pattern**, not a colour gradient.
+- `main.page.home`: flex column, centred, `zoom: 1`, `min-height: calc(100dvh - 56px)` (the 56px is
+  the ticker band), `overflow: clip`. The home styles live in the "Home page" section of
+  `global.css` and are scoped under `.page.home`.
+- Composition: `.home__hero` — 2-column grid (1.05fr / 0.95fr, max 1120px). Left `.home__copy`:
+  badge → headline → subline → form card (max 560px). Right `.home__art`: medallion. Below: three
+  `.home__step` cards (max 900px), legal line, then the `.home__ticker` band (56px, full bleed).
+- Reading widths: form 560px; subline 44ch; legal 60ch.
+- Body ground: plain Warm Ivory — no dot grid, no canvas, no gradients.
 - 4px spacing scale: `--space-1..20` = 4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80.
 
 ## Visual language
@@ -89,33 +88,40 @@ Rules: sentence case for prose; uppercase only for short labels and buttons; two
 | `--shadow-card` | `5px 5px 0 var(--color-ink)` | JOIN THE WAITLIST button, success panel |
 | `--shadow-hover` | `7px 7px 0 var(--color-ink)` | Button hover |
 | `--shadow-pressed` | `2px 2px 0 var(--color-ink)` | Button active |
-| `--shadow-float` | `8px 8px 0 var(--color-ink)` | Available for ink panels (currently unused) |
+| `--shadow-float` | `8px 8px 0 var(--color-ink)` | Form card, medallion disc |
 
-Inline variants: input `4px 4px 0 #FFF500`; "monopoly" marker `4px 4px 0 var(--color-ink)`.
+Inline variants: input `4px 4px 0 #FFF500`; headline marker `6px 6px 0 var(--color-ink)`; badge
+`3px 3px 0`; wordmark `drop-shadow(4px 4px 0 ink)`.
 
 **Radius:** `--radius-card: 10px`, `--radius-button: 8px`, `--radius-input: 8px`, `--radius-panel:
-14px`, `--radius-badge: 6px`. No pills.
+14px`, `--radius-badge: 6px`. The only pill is the "Waitlist open" badge; the medallion is a circle.
 
-**Decoration vocabulary:** the official artwork is the whole show — periwinkle bubble-letter
-wordmark, pixel raccoon. Supporting: four hand-authored SVG sparkles (pink TL, periwinkle TR, lime
-BL, violet BR), repositioned slightly at ≤640px, and the yellow marker behind "monopoly" at −1°.
+**Decoration vocabulary:** the official artwork leads — periwinkle bubble-letter wordmark, pixel
+raccoon — set inside a flat sunburst disc (`repeating-conic-gradient` yellow/pale yellow, 3px ink
+border, float shadow) with a rotating SVG `textPath` ring ("ROLL • TRADE • OWN"). Supporting: four
+hand-authored SVG sparkles, a tilted yellow marker behind "Own the Arc." (−2°), slightly rotated
+form card and step cards (yellow "Roll", pink "Trade", mint "Own"), and an ink ticker band.
 
 **Anti-patterns (do not introduce):**
 
 - No soft/blurred shadows — hard offset tokens only.
-- No gradients or glassmorphism (the body dot grid is a pattern, not a gradient; keep it).
-- No eyebrow kickers above headings.
-- No auto-scroll content of any kind. No bounce/elastic easing, no parallax.
-- No extra sections. The shape is pinned; do not re-add nav, hero, About, Showcase or a footer.
+- No gradients or glassmorphism. (The sunburst is a flat hard-edged conic stripe pattern.)
+- No 3D, WebGL canvases, floating objects, or dot/grid background patterns.
+- Don't swap the display font for a coarse pixel face (Press Start 2P, Silkscreen, Pixelify at
+  large sizes) — readability of the headline comes first.
+- No bounce/elastic easing, no parallax. No nav or footer navigation.
+- No invented claims in the step cards or subline (see Content rules).
 
 ## Components
 
 Present in the repo:
 
 - **index.astro** — the page: skip link, "?" explainer badge (top-right → `/docs`),
-  "play" action chip directly below it (→ `/play`, new tab), decorative
-  sparkles, h1 > wordmark image (1 h1 only), tagline, `.page__form` (id `waitlist`), legal line,
-  `WaitlistForm`, `CookieBanner`.
+  "play" action chip directly below it (→ `/play`, new tab), decorative sparkles, `.home__hero`
+  (badge "Waitlist open · Built on Arc", headline "Roll. Trade. Own the Arc.", subline,
+  `.page__form.home__card` id `waitlist` wrapping `WaitlistForm`; medallion with h1 > wordmark
+  image — 1 h1 only), `.home__steps` (Roll / Trade / Own cards), legal line, `.home__ticker`
+  (aria-hidden, duplicated groups for a seamless loop), `Waterwave`, `CookieBanner`.
 - **play.astro** (`/play`) — Privy-gated minigame seat on Arc Testnet. Static shell (back link,
   wordmark, sparkle, legal line) + a `Dashboard.tsx` React island (`client:only="react"`) wired
   to Privy (`PrivyProvider`, `embeddedWallets.ethereum.createOnLogin: 'users-without-wallets'`,
@@ -154,17 +160,20 @@ Present in the repo:
   cubic-bezier(0.16, 1, 0.3, 1)`.
 - **Reduced motion**: `html` scroll-behavior auto; all animations/transitions forced to `0.01ms`,
   iteration count 1; the waterwave transition is skipped entirely (plain navigation).
-- Landing sparkles `twinkle 2.2–3.4s ease-in-out infinite` (scale/rotate/opacity pulse,
-  staggered via `.twinkle--2/3/4`) — the only perpetual motion on the page besides the spinner.
+- Perpetual motion on the home page (all disabled under reduced motion): sparkles `twinkle
+  2.2–3.4s`; badge dot `homePulse 1.6s`; wordmark `homeFloat 4.5s`; sunburst disc `homeSpin 60s`;
+  ring text `homeSpin 40s reverse`; ticker `homeTicker 28s linear`. Step cards lift on hover
+  (`translate(2px,−4px)`, shadow → 7px).
 - Waterwave layers undulate ±26px while covering/uncovering; the overlay removes itself after
   `animationend` (900ms safety timeout).
-- No loops over content, no auto-scroll, no parallax.
+- No parallax. The ticker is decorative (aria-hidden) and carries no information.
 
 ## Responsive
 
-Breakpoints: **640px** (top-left sparkle repositions), **620px** (form row → column, full-width
-button). Logo/tagline fluid via `clamp`; `overflow-x: clip` on body. These are the only
-breakpoints — do not invent more.
+Breakpoints: **900px** (hero → single column, medallion first at ≤320px, copy centred), **760px**
+(step cards stack, max 420px; form card un-rotated), **640px** (top-left sparkle repositions),
+**620px** (form row → column, full-width button). Headline fluid via `clamp`. Do not invent more.
+(Mobile layout has not yet been visually verified.)
 
 ## Accessibility
 
@@ -183,10 +192,11 @@ breakpoints — do not invent more.
   corporate Web3 tone, no AI-slop phrasing.
 - **No invented claims:** no launch date, token details/economics, social metrics, testimonials,
   press, user counts. "One email when we launch" is the only launch promise on the page.
-- **Trademark ceiling:** "monopoly" appears **only** inside the user-pinned opening line "we create
-  monopoly on arc", lowercase, exactly as the user wrote it. Everywhere else: "property-trading".
+- **Trademark ceiling:** the page copy no longer uses "monopoly". It survives only in the
+  user-pinned X share caption in `WaitlistForm.astro` ("the first monopoly market on arc…").
+  Everywhere else: "property-trading".
 - **Arc** is a chain Akipoly is built on: name-drop it, never explain it, never invent chain claims.
-- One action, one page: JOIN THE WAITLIST. There is no second action.
+- One primary action: JOIN THE WAITLIST. (The header chips "?" and "play" are secondary navigation.)
 
 ## Verification
 
