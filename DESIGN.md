@@ -129,10 +129,15 @@ Present in the repo:
   yellow sign-in button. Logged in: "you're in." + wallet card (address + copy, USDC balance
   via `getBalance` on the Arc RPC, explorer link, sign out). Recipient of the landing page's
   "dashboard" chip (opens in a new tab).
-- **docs.astro** (`/docs`) — the "what is this thing" explainer for the curious: TL;DR card,
-  plain-language sections (the short version / what you actually do / why Arc / who it's for /
-  when it launches / the fine print), a JOIN THE WAITLIST button back to `/`, and its own legal
-  line. No new claims, no invented dates, no tokenomics.
+- **docs.astro** (`/docs`) — the "what is this thing" explainer for the curious, in the same
+  Electric Playground language as the home page: sticker-chip top bar, "the explainer" badge,
+  headline with yellow marker + sunburst medallion (raccoon head, rotating ring), TL;DR sticker,
+  sticky "on this page" nav (chip row ≤900px, active section via IntersectionObserver), six
+  numbered section cards (coloured, striped header band; Buy / Build / Compete sticker trio;
+  marker-pen `.docs__mark` highlights), a "ready to roll?" CTA card → `/`, the whitepaper
+  sign-off + hidden jumpscare link (kept as-is), legal line, ticker band, and a fixed
+  reading-progress bar. Cards rise in via CSS `animation-timeline: view()` where supported.
+  No new claims, no invented dates, no tokenomics.
 - **CookieBanner** — one-line honest note ("We don't do creepy tracking cookies. One localStorage
   note so we don't nag you. That's it.") with a single GOT IT action; dismissal persists in
   `localStorage` (`akipoly:cookie-ack`); `role="region"` + label; reduced-motion safe.
