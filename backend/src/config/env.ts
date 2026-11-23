@@ -29,7 +29,18 @@ const schema = z.object({
   ARC_RPC_URL: z.string().url().optional(),
   /** Hot wallet that receives buy-ins/side bets and sends payouts. */
   TREASURY_PRIVATE_KEY: z.string().regex(/^0x[0-9a-fA-F]{64}$/, 'TREASURY_PRIVATE_KEY must be 0x + 64 hex'),
-  /** Run the payout sender in this process. Exactly one instance should. */
+  /** AkipolyRounds: the VRF consumer the treasury calls once per round. */
+  VRF_ROUNDS_ADDRESS: z.string().regex(/^0x[0-9a-fA-F]{40}$/, 'VRF_ROUNDS_ADDRESS must be an address'),
+  /** AkipolyVRFCoordinator: verifies proofs on-chain. */
+  VRF_COORDINATOR_ADDRESS: z.string().regex(/^0x[0-9a-fA-F]{40}$/, 'VRF_COORDINATOR_ADDRESS must be an address'),
+  /**
+   * The oracle's VRF secret key (secp256k1). Its public key is registered on the
+   * coordinator. It only signs proofs and never holds funds or pays gas.
+   */
+  VRF_ORACLE_KEY: z.string().regex(/^0x[0-9a-fA-F]{64}$/, 'VRF_ORACLE_KEY must be 0x + 64 hex'),
+  /** A round still drawing after this long is voided (side bets refunded, nobody out). */
+  VRF_DRAW_TIMEOUT_MS: z.coerce.number().int().min(30_000).max(3_600_000).default(300_000),
+  /** Run the treasury worker (VRF draws + payouts) in this process. Exactly one instance should. */
   PAYOUT_WORKER: z
     .enum(['true', 'false'])
     .default('true')

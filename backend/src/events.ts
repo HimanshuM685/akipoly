@@ -12,6 +12,8 @@ interface Events {
   lobbies: [];
   /** Payouts were enqueued and committed. */
   payouts: [];
+  /** A VRF draw was queued and committed. */
+  vrf: [];
   payout: [userId: string, payout: { amount: string; reason: PayoutReason; txHash: string }];
 }
 

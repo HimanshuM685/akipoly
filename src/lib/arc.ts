@@ -2,9 +2,10 @@
  * Client-side Arc network config, picked by PUBLIC_ARC_NETWORK
  * (testnet | mainnet). Must match the game server's ARC_NETWORK.
  */
-import { createPublicClient, erc20Abi, formatUnits, getAddress, http, parseUnits, type Chain } from 'viem';
+import { createPublicClient, erc20Abi, formatUnits, getAddress, http, parseAbi, parseUnits, type Chain } from 'viem';
 import { arc as arcMainnet, arcTestnet } from 'viem/chains';
 import { ARC_NETWORKS, USDC_DECIMALS, isArcNetwork } from '../../backend/src/shared/arc';
+import { AKIPOLY_ROUNDS_ABI, gameIdToBytes16 } from '../../backend/src/shared/vrf';
 
 const requested = import.meta.env.PUBLIC_ARC_NETWORK as string | undefined;
 export const network = ARC_NETWORKS[isArcNetwork(requested) ? requested : 'testnet'];
@@ -36,3 +37,14 @@ export function readUsdcBalance(address: string): Promise<bigint> {
 
 export const txUrl = (hash: string) => `${network.explorerUrl}/tx/${hash}`;
 export const addressUrl = (address: string) => `${network.explorerUrl}/address/${address}`;
+
+const roundsAbi = parseAbi(AKIPOLY_ROUNDS_ABI);
+
+/** A ReadDraw for src/lib/fairness.ts: AkipolyRounds.drawOf straight from Arc (not via our server). */
+export const readRoundDraw = (roundsAddress: string) => (gameId: string, roundNumber: number) =>
+  publicClient.readContract({
+    address: getAddress(roundsAddress),
+    abi: roundsAbi,
+    functionName: 'drawOf',
+    args: [gameIdToBytes16(gameId), roundNumber],
+  });

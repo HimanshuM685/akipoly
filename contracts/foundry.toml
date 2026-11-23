@@ -1,0 +1,9 @@
+# Kept so `forge build` works where Foundry is available. In this repo the
+# contracts are compiled with solc-js (scripts/build.ts) and tested with node:test.
+[profile.default]
+src = "src"
+out = "out"
+solc_version = "0.8.28"
+evm_version = "shanghai"
+optimizer = true
+optimizer_runs = 200

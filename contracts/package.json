@@ -1,0 +1,21 @@
+{
+  "name": "akipoly-contracts",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsx scripts/build.ts",
+    "backend-deps": "npm --prefix ../backend install --no-audit --no-fund",
+    "pretest": "npm run backend-deps",
+    "test": "tsx scripts/build.ts && node --import tsx --test test/*.test.ts",
+    "predeploy": "npm run backend-deps",
+    "deploy": "tsx scripts/build.ts && tsx scripts/deploy.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "ganache": "^7.9.2",
+    "solc": "^0.8.28",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "viem": "^2.58.2"
+  }
+}
