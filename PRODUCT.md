@@ -8,7 +8,7 @@ web
 
 ## Stack
 
-Astro (static output, no server requirements). Client-side interactivity is plain TypeScript in the form component — no UI framework. Fonts via Google Fonts (Chango display; Space Grotesk body).
+Astro (static output, no server requirements). Client-side interactivity is plain TypeScript in the form component — no UI framework. Fonts via Google Fonts (Jersey 25 display; Bricolage Grotesque body).
 
 ## Users
 
@@ -16,7 +16,7 @@ Both sides of the fence, web3-light: people who love property-trading board game
 
 ## Product Purpose
 
-Akipoly reimagines the classic property-trading board game as a playful GameFi experience on Arc. This surface is the single waitlist screen: one viewport, one action — understand that Akipoly exists in under five seconds, and join the waitlist.
+Akipoly reimagines the classic property-trading board game as a playful GameFi experience on Arc. This surface is the waitlist home page: one primary action — understand that Akipoly exists in under five seconds, and join the waitlist.
 
 ## Positioning
 
@@ -30,17 +30,18 @@ Visitors arrive from social posts, communities and word of mouth. Most decide in
 
 - Waitlist form: validated email field (required + format), visible inline error and a success state. No backend exists; submissions are not persisted to any server until an endpoint is wired in.
 - No real launch date, no token details, no social metrics, no testimonials: none exist, none may be invented.
-- Copy must be human and must not use Monopoly/Hasbro trademarks — except inside the user-pinned opening line "we create monopoly on arc", used verbatim and lowercase.
+- Copy must be human and must not use Monopoly/Hasbro trademarks. (Only exception: the user-pinned X share caption in the waitlist form.)
 - `design.md` (user-attached, at `E:\editshit\design.md`) is binding for every visual decision: palette, typography roles, 3px ink borders, hard offset shadows, motion restraint, accessibility rules.
-- Technical: one page, one screen, semantic HTML, accessible form controls, responsive, respects `prefers-reduced-motion`, minimal dependencies.
+- Technical: semantic HTML, accessible form controls, responsive, respects `prefers-reduced-motion`, minimal dependencies.
 - The wordmark/favicon artwork is user-supplied and authoritative (`The AKI Chapter.png`).
 
 ## Brand Commitments
 
 - Binding visual direction: "bright neobrutalism meets arcade gaming" per the attaching design.md (Electric Yellow #FFF500, Periwinkle #9DB7FB, Tangerine #FF6B4A, Lime Mint #B8F28B, Bubblegum Pink #FF80B5, Electric Violet #A78BFA, Ink Black #171717, Warm Ivory #FFFDF2).
-- The single-screen structure itself is user-pinned (2026-11-18): logo, the tagline "we create monopoly on arc", the email form, a minimal legal line. No hero, no About, no Showcase, no nav, no footer navigation.
-- Tagline is used exactly, lowercase: "we create monopoly on arc". Arc is a chain Akipoly is built on — name-drop it, never explain it, never invent chain claims.
-- Chango (display) + Space Grotesk (body/UI). Uppercase reserved for short labels and buttons.
+- Structure (revised by the user 2026-11-23): split hero (copy + email form | wordmark medallion), three Roll / Trade / Own cards, a ticker band, a minimal legal line. No About, no Showcase, no nav, no footer navigation. This replaces the earlier single-screen, 0.8-zoom pin.
+- Tagline (revised 2026-11-23): "Roll. Trade. Own the Arc." — replaces "we create monopoly on arc". Arc is a chain Akipoly is built on — name-drop it, never explain it, never invent chain claims.
+- Jersey 25 (display, pixel-style but readable) + Bricolage Grotesque (body/UI). Uppercase reserved for short labels and buttons.
+- Plain ivory background: no dot grid, no 3D/WebGL decoration.
 - Voice: playful, confident, short, funny where it earns it. No hype decks, no "unleash", no corporate Web3 tone.
 - Official brand mark (user-supplied 2026-11-18): periwinkle bubble-letter AKIPOLY wordmark with a pixel raccoon head. Never redraw it; derive from the master.
 - Relationship to the classic board game: affectionate inspiration only; no borrowed artwork, names or marks.
@@ -54,8 +55,8 @@ Visitors arrive from social posts, communities and word of mouth. Most decide in
 
 ## Product Principles
 
-1. One screen, one action: the whole site exists to collect an email address.
-2. Keep it short, keep it bold, keep it fun — zero scrolling required.
+1. One primary action: the page exists to collect an email address.
+2. Keep it short, keep it bold, keep it fun — the key message and the form are visible without scrolling.
 3. Never fabricate traction, claims or assets; keep placeholders legal and minimal.
 4. Neobrutalist tactility over SaaS polish: thick borders, hard shadows, real hover/press feedback.
 5. Fast, accessible, honest: instant load, keyboard-friendly, readable contrast, reduced-motion respected.
