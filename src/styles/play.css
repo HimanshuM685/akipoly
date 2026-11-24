@@ -315,11 +315,27 @@
   flex-direction: column;
   gap: var(--space-5);
   padding: clamp(1rem, 2.5vw, 1.75rem);
-  background: repeating-conic-gradient(from 0deg at 50% 42%, var(--color-primary) 0 6deg, #fff9a8 6deg 12deg);
+  background: var(--color-primary);
   border: var(--border-width) solid var(--color-ink);
   border-radius: var(--radius-panel);
   box-shadow: var(--shadow-float);
   min-width: 0;
+  overflow: hidden;
+}
+
+/* The sunburst lives on its own layer so it can slowly turn. */
+.arena__stage::before {
+  content: "";
+  position: absolute;
+  inset: -70%;
+  background: repeating-conic-gradient(from 0deg at 50% 50%, var(--color-primary) 0 6deg, #fff9a8 6deg 12deg);
+  animation: playSpin 90s linear infinite;
+  pointer-events: none;
+}
+
+.arena__stage > * {
+  position: relative;
+  z-index: 1;
 }
 
 .arena__bar {
@@ -436,38 +452,6 @@
   color: var(--color-ink);
   font-size: 0.95rem;
   line-height: 1.3;
-}
-
-.arena__scale {
-  list-style: none;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(17, minmax(0, 1fr));
-  gap: 3px;
-  width: min(560px, 100%);
-}
-
-.arena__tick {
-  display: grid;
-  place-items: center;
-  aspect-ratio: 1 / 1.15;
-  background: var(--color-white);
-  border: 2px solid var(--color-ink);
-  border-radius: 4px;
-  font-size: clamp(0.55rem, 1.4vw, 0.75rem);
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: rgba(23, 23, 23, 0.55);
-  transition: background-color 160ms ease, transform 160ms ease;
-}
-
-.arena__tick--up { background: var(--color-success); color: var(--color-ink); }
-.arena__tick--down { background: var(--color-secondary); color: var(--color-ink); }
-
-.arena__tick--now {
-  background: var(--color-ink);
-  color: var(--color-paper);
-  transform: translateY(-5px);
 }
 
 /* ---- the call: timer + picks ---- */
@@ -781,8 +765,230 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .arena__timer-fill,
-  .arena__tick {
+  .arena__timer-fill {
     transition: none;
+  }
+}
+
+/* ================================================================== */
+/*  Motion (2026-11-25) — layered on top, look unchanged               */
+/* ================================================================== */
+
+@keyframes playRise {
+  from { opacity: 0; translate: 0 26px; }
+  to { opacity: 1; translate: 0 0; }
+}
+
+@keyframes playSlide {
+  from { opacity: 0; translate: 40px 0; }
+  to { opacity: 1; translate: 0 0; }
+}
+
+@keyframes playSlideLeft {
+  from { opacity: 0; translate: -24px 0; }
+  to { opacity: 1; translate: 0 0; }
+}
+
+@keyframes playPop {
+  0% { opacity: 0; scale: 0.5; }
+  60% { opacity: 1; scale: 1.08; }
+  100% { opacity: 1; scale: 1; }
+}
+
+@keyframes playWipe {
+  from { clip-path: inset(-14px 100% -14px -14px); }
+  to { clip-path: inset(-14px -14px -14px -14px); }
+}
+
+@keyframes playSpin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes playDrift {
+  0%, 100% { translate: 0 0; }
+  33% { translate: 8px -14px; }
+  66% { translate: -8px -6px; }
+}
+
+@keyframes playBob {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -10px; }
+}
+
+@keyframes playArrowUp {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -5px; }
+}
+
+@keyframes playArrowDown {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 5px; }
+}
+
+@keyframes playStripes {
+  to { background-position: 28.284px 0; }
+}
+
+@keyframes playShake {
+  0%, 100% { translate: 0 0; }
+  25% { translate: -3px 0; }
+  75% { translate: 3px 0; }
+}
+
+@keyframes playShine {
+  0%, 62% { translate: -140% 0; }
+  100% { translate: 260% 0; }
+}
+
+@keyframes playWiggle {
+  25% { rotate: -14deg; }
+  75% { rotate: 14deg; }
+}
+
+@keyframes playBeat {
+  0% { scale: 1; }
+  40% { scale: 1.18; }
+  100% { scale: 1; }
+}
+
+/* ---------- page header + hero ---------- */
+
+.play__top { animation: playRise 0.6s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+.play .home__badge { animation: playRise 0.6s cubic-bezier(0.2, 0.9, 0.3, 1) 0.1s both; }
+.play .play__title { animation: playRise 0.7s cubic-bezier(0.2, 0.9, 0.3, 1) 0.18s both; }
+.play .docs__hl { animation: playWipe 0.7s cubic-bezier(0.7, 0, 0.2, 1) 0.7s both; }
+.play .play__sub { animation: playRise 0.7s cubic-bezier(0.2, 0.9, 0.3, 1) 0.35s both; }
+
+.play__rule {
+  animation: playSlide 0.7s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+  transition: translate 180ms ease, box-shadow 180ms ease;
+}
+.play__rule:nth-child(1) { animation-delay: 0.35s; }
+.play__rule:nth-child(2) { animation-delay: 0.5s; }
+.play__rule:nth-child(3) { animation-delay: 0.65s; }
+
+.play__rule:hover { translate: -4px -3px; box-shadow: 7px 7px 0 var(--color-ink); }
+.play__rule:hover b { animation: playWiggle 0.5s ease-in-out; }
+
+.play__rule b { animation: playPop 0.5s cubic-bezier(0.3, 1.4, 0.5, 1) both; }
+.play__rule:nth-child(1) b { animation-delay: 0.9s; }
+.play__rule:nth-child(2) b { animation-delay: 1.05s; }
+.play__rule:nth-child(3) b { animation-delay: 1.2s; }
+
+/* sparkles drift on top of the existing twinkle */
+.play .play__spark {
+  animation-name: twinkle, playDrift;
+  animation-timing-function: ease-in-out, ease-in-out;
+  animation-iteration-count: infinite, infinite;
+}
+.play .play__spark--a { animation-duration: 2.6s, 7s; animation-delay: 0s, 0s; }
+.play .play__spark--b { animation-duration: 3.4s, 8.5s; animation-delay: -1.9s, -3s; }
+.play .play__spark--c { animation-duration: 2.9s, 6.5s; animation-delay: -1.2s, -1.5s; }
+
+/* ---------- app shell ---------- */
+
+.play .dash__topbar { animation: playRise 0.7s cubic-bezier(0.2, 0.9, 0.3, 1) 0.45s both; }
+.play .hub__card { animation: playRise 0.7s cubic-bezier(0.2, 0.9, 0.3, 1) 0.6s both; }
+.play .hub__card:nth-child(2) { animation-delay: 0.75s; }
+.hub__card:hover .hub__icon { animation: playWiggle 0.5s ease-in-out; }
+
+.play .lobbies__card { animation: playRise 0.5s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+.play .lobbies__card:nth-child(2) { animation-delay: 0.07s; }
+.play .lobbies__card:nth-child(3) { animation-delay: 0.14s; }
+.play .lobbies__card:nth-child(4) { animation-delay: 0.21s; }
+.play .lobbies__card:nth-child(n + 5) { animation-delay: 0.28s; }
+.play .lobbies__tag--live { animation: homePulse 1.6s ease-in-out infinite; }
+
+.play .signin { animation: playRise 0.7s cubic-bezier(0.2, 0.9, 0.3, 1) 0.45s both; }
+.play .signin__step { animation: playBob 4s ease-in-out infinite; }
+.play .signin__step--b { animation-delay: -1.3s; }
+.play .signin__step--c { animation-delay: -2.6s; }
+
+.play .dash__loading { animation: playBob 1.6s ease-in-out infinite; }
+
+/* ---------- waiting room ---------- */
+
+.play .room { animation: playRise 0.6s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+.play .room__seat { animation: playSlideLeft 0.45s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+.play .room__seat:nth-child(2) { animation-delay: 0.08s; }
+.play .room__seat:nth-child(3) { animation-delay: 0.16s; }
+.play .room__seat:nth-child(n + 4) { animation-delay: 0.24s; }
+.play .room__ready--yes { animation: playBeat 0.5s cubic-bezier(0.3, 1.4, 0.5, 1); }
+.play .room__tag { animation: homePulse 1.6s ease-in-out infinite; }
+
+/* ---------- arena ---------- */
+
+.arena__stage { animation: playPop 0.6s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+.arena__rail > * { animation: playSlide 0.6s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+.arena__rail > :nth-child(2) { animation-delay: 0.12s; }
+.arena__rail > :nth-child(3) { animation-delay: 0.24s; }
+
+.arena__pop { animation: playBeat 0.45s cubic-bezier(0.3, 1.4, 0.5, 1); }
+
+/* the ball idles with a gentle bob; its own roll/land keyframes keep transform */
+.arena .ballreel { animation: playBob 3.2s ease-in-out infinite; }
+.arena .ballreel__label { animation: playRise 0.4s ease-out both; }
+
+.arena__call { animation: playRise 0.5s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+
+/* timer: moving stripes on the fill, shake when urgent */
+.arena__timer-fill {
+  background-image: linear-gradient(
+    135deg,
+    rgba(23, 23, 23, 0.12) 25%,
+    transparent 25% 50%,
+    rgba(23, 23, 23, 0.12) 50% 75%,
+    transparent 75%
+  );
+  background-size: 28.284px 28.284px;
+  animation: playStripes 1.2s linear infinite;
+}
+
+.arena__timer--urgent .arena__timer-track { animation: playShake 0.3s linear infinite; }
+
+/* higher / lower: arrows bounce, buttons press */
+.arena .game__choice--higher .game__choice-arrow { animation: playArrowUp 1.2s ease-in-out infinite; }
+.arena .game__choice--lower .game__choice-arrow { animation: playArrowDown 1.2s ease-in-out infinite; }
+.arena .game__choice:disabled .game__choice-arrow,
+.arena .game__choice--active .game__choice-arrow { animation: none; }
+
+.arena .game__choice { transition: transform 140ms ease, box-shadow 140ms ease, opacity 140ms ease; }
+.arena .game__choice:not(:disabled):active { transform: translate(3px, 3px); box-shadow: var(--shadow-pressed); }
+
+/* lock-in button shine */
+.arena .game__lock { position: relative; overflow: hidden; }
+.arena .game__lock:not(:disabled)::after {
+  content: "";
+  position: absolute;
+  top: -20%;
+  bottom: -20%;
+  left: 0;
+  width: 26%;
+  background: rgba(255, 255, 255, 0.55);
+  transform: skewX(-22deg);
+  pointer-events: none;
+  animation: playShine 3.6s ease-in-out 1s infinite;
+}
+
+/* roster + history */
+.arena .game__seat { animation: playSlide 0.45s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+.arena .game__seat:nth-child(2) { animation-delay: 0.06s; }
+.arena .game__seat:nth-child(3) { animation-delay: 0.12s; }
+.arena .game__seat:nth-child(4) { animation-delay: 0.18s; }
+.arena .game__seat:nth-child(n + 5) { animation-delay: 0.24s; }
+.arena .game__called--yes { animation: playPop 0.35s cubic-bezier(0.3, 1.4, 0.5, 1); }
+.arena .game__crown { display: inline-block; animation: playBob 1.4s ease-in-out infinite; }
+.arena .game__history-item:first-child { animation: playPop 0.5s cubic-bezier(0.3, 1.4, 0.5, 1); }
+.arena .game__over { animation: playPop 0.6s cubic-bezier(0.3, 1.4, 0.5, 1) both; }
+.arena .game__over-title { display: inline-block; animation: playBob 1.8s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .play *,
+  .play *::before,
+  .play *::after,
+  .arena *,
+  .arena *::before,
+  .arena *::after {
+    animation: none !important;
   }
 }

@@ -4,7 +4,7 @@ import { useCountdown, useGameSocket } from '../../features/game/GameSocket';
 import BallReel from '../../features/game/BallReel';
 import PickPanel from '../../features/game/PickPanel';
 import { formatUsdc } from '../../lib/arc';
-import { BALL_MAX, BALL_MIN } from '../../../backend/src/shared/constants';
+import { burst } from '../../scripts/fx-lib';
 
 interface Props {
   lobby: LobbyView;
@@ -24,6 +24,8 @@ export default function LiveGame({ lobby, game, onLeave }: Props) {
   const { session, clockOffset, toast } = useGameSocket();
   const [flash, setFlash] = useState<'win' | 'loss' | 'push' | null>(null);
   const prevGame = useRef<GameView | null>(null);
+  const stageRef = useRef<HTMLElement | null>(null);
+  const confettiDone = useRef(false);
 
   const round = game.round;
   const ended = game.status === 'finished';
@@ -49,6 +51,24 @@ export default function LiveGame({ lobby, game, onLeave }: Props) {
     else setFlash(game.me?.alive ? 'win' : 'loss');
   }, [game, toast]);
 
+  const celebrate = (count: number) => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const r = stageRef.current?.getBoundingClientRect();
+    if (r) burst(r.left + r.width / 2, r.top + r.height * 0.38, count);
+  };
+
+  // Confetti when you survive a round, and a big one when you win the game.
+  useEffect(() => {
+    if (flash === 'win') celebrate(14);
+  }, [flash]);
+
+  useEffect(() => {
+    if (ended && winner?.userId === session?.userId && !confettiDone.current) {
+      confettiDone.current = true;
+      celebrate(40);
+    }
+  }, [ended, winner, session]);
+
   // Clear the flash on its own timer so later pushes can't cancel the reset.
   useEffect(() => {
     if (!flash) return;
@@ -71,11 +91,10 @@ export default function LiveGame({ lobby, game, onLeave }: Props) {
   const pct = Math.max(0, Math.min(100, (secondsLeft * 1000 * 100) / bettingMs));
   const betting = !ended && round?.phase === 'betting';
   const urgent = secondsLeft <= 5 && secondsLeft > 0;
-  const scale = Array.from({ length: BALL_MAX - BALL_MIN + 1 }, (_, i) => BALL_MIN + i);
 
   return (
     <div className={`game arena ${flash ? `game--flash-${flash}` : ''}`}>
-      <section className="arena__stage" aria-label="Game table">
+      <section className="arena__stage" aria-label="Game table" ref={stageRef}>
         <header className="arena__bar">
           <div className="arena__title">
             <span className="arena__eyebrow">table</span>
@@ -84,15 +103,15 @@ export default function LiveGame({ lobby, game, onLeave }: Props) {
           <dl className="arena__stats">
             <div className="arena__stat">
               <dt>round</dt>
-              <dd>{round?.number ?? 0}</dd>
+              <dd key={round?.number ?? 0} className="arena__pop">{round?.number ?? 0}</dd>
             </div>
             <div className="arena__stat">
               <dt>standing</dt>
-              <dd>{alive.length}</dd>
+              <dd key={alive.length} className="arena__pop">{alive.length}</dd>
             </div>
             <div className="arena__stat arena__stat--pot">
               <dt>pot</dt>
-              <dd>{formatUsdc(game.pot)} <small>usdc</small></dd>
+              <dd key={String(game.pot)} className="arena__pop">{formatUsdc(game.pot)} <small>usdc</small></dd>
             </div>
           </dl>
         </header>
@@ -107,18 +126,6 @@ export default function LiveGame({ lobby, game, onLeave }: Props) {
               clockOffset={clockOffset}
               label={ballLabel}
             />
-            <ol className="arena__scale" aria-hidden="true">
-              {scale.map((n) => (
-                <li
-                  key={n}
-                  className={`arena__tick ${n === ballValue ? 'arena__tick--now' : ''} ${
-                    betting && ballValue !== null ? (n > ballValue ? 'arena__tick--up' : n < ballValue ? 'arena__tick--down' : '') : ''
-                  }`}
-                >
-                  {n}
-                </li>
-              ))}
-            </ol>
           </div>
         )}
 
