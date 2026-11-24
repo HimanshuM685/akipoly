@@ -1,0 +1,244 @@
+/* ------------------------------------------------------------------ */
+/*  Home page — extra motion (2026-11-25)                              */
+/*  Layout, colours and type are untouched. Everything here is added   */
+/*  on top using the individual `translate` / `scale` properties so it */
+/*  composes with the existing rotate() transforms. Loaded on / only.  */
+/* ------------------------------------------------------------------ */
+
+@keyframes fxRise {
+  from {
+    opacity: 0;
+    translate: 0 30px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+@keyframes fxPop {
+  0% {
+    opacity: 0;
+    scale: 0.4;
+  }
+  60% {
+    opacity: 1;
+    scale: 1.06;
+  }
+  100% {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+@keyframes fxWipe {
+  from {
+    clip-path: inset(-14px 100% -14px -14px);
+  }
+  to {
+    clip-path: inset(-14px -14px -14px -14px);
+  }
+}
+
+@keyframes fxDrift {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  33% {
+    translate: 8px -14px;
+  }
+  66% {
+    translate: -8px -6px;
+  }
+}
+
+@keyframes fxBreathe {
+  50% {
+    scale: 1.035;
+  }
+}
+
+@keyframes fxShine {
+  0%,
+  62% {
+    translate: -140% 0;
+  }
+  100% {
+    translate: 260% 0;
+  }
+}
+
+@keyframes fxNudge {
+  0%,
+  86%,
+  100% {
+    translate: 0 0;
+    rotate: 0deg;
+  }
+  90% {
+    translate: 0 -5px;
+    rotate: -1.2deg;
+  }
+  94% {
+    translate: 0 0;
+    rotate: 1deg;
+  }
+}
+
+@keyframes fxWiggle {
+  25% {
+    rotate: -14deg;
+  }
+  75% {
+    rotate: 14deg;
+  }
+}
+
+/* ---------- entrance sequence ---------- */
+
+.page.home .home__headline {
+  animation: fxRise 0.7s cubic-bezier(0.2, 0.9, 0.3, 1) 0.1s both;
+}
+
+.page.home .page__hl {
+  animation: fxWipe 0.7s cubic-bezier(0.7, 0, 0.2, 1) 0.65s both;
+}
+
+.page.home .home__sub {
+  animation: fxRise 0.7s cubic-bezier(0.2, 0.9, 0.3, 1) 0.3s both;
+}
+
+.page.home .home__card {
+  animation: fxRise 0.8s cubic-bezier(0.2, 0.9, 0.3, 1) 0.45s both;
+}
+
+.page.home .home__sunburst {
+  /* keep the 60s spin, add a pop-in and a slow breathing pulse */
+  animation:
+    homeSpin 60s linear infinite,
+    fxPop 0.9s cubic-bezier(0.2, 0.9, 0.3, 1) 0.2s both,
+    fxBreathe 5s ease-in-out 1.2s infinite;
+}
+
+.page.home .home__ring {
+  animation:
+    homeSpin 40s linear infinite reverse,
+    fxPop 0.9s cubic-bezier(0.2, 0.9, 0.3, 1) 0.35s both;
+}
+
+.page.home .home__brand {
+  animation: fxPop 0.9s cubic-bezier(0.2, 0.9, 0.3, 1) 0.5s both;
+  cursor: pointer;
+  /* pointer parallax, driven by --px / --py from the script */
+  translate: calc(var(--px, 0) * 14px) calc(var(--py, 0) * 14px);
+  transition: translate 220ms ease-out;
+}
+
+.fx-ready .home__sunburst {
+  translate: calc(var(--px, 0) * -10px) calc(var(--py, 0) * -10px);
+  transition: translate 300ms ease-out;
+}
+
+/* ---------- sparkles: drift on top of the existing twinkle ---------- */
+
+.page.home .page__spark {
+  animation-name: twinkle, fxDrift;
+  animation-timing-function: ease-in-out, ease-in-out;
+  animation-iteration-count: infinite, infinite;
+}
+
+.page.home .page__spark--tl { animation-duration: 2.6s, 7s; animation-delay: 0s, 0s; }
+.page.home .page__spark--tr { animation-duration: 3.1s, 8.5s; animation-delay: -0.7s, -2s; }
+.page.home .page__spark--bl { animation-duration: 2.9s, 6.5s; animation-delay: -1.2s, -4s; }
+.page.home .page__spark--br { animation-duration: 3.4s, 9s; animation-delay: -1.9s, -1s; }
+
+/* ---------- call to action: periodic shine + nudge ---------- */
+
+.page.home .wl-form__submit {
+  position: relative;
+  overflow: hidden;
+  animation: fxNudge 5s ease-in-out 3s infinite;
+}
+
+.page.home .wl-form__submit::after {
+  content: "";
+  position: absolute;
+  top: -20%;
+  bottom: -20%;
+  left: 0;
+  width: 28%;
+  background: rgba(255, 255, 255, 0.55);
+  transform: skewX(-22deg);
+  pointer-events: none;
+  animation: fxShine 4.5s ease-in-out 1.5s infinite;
+}
+
+/* ---------- step cards: scroll reveal + hover wiggle ---------- */
+
+.fx-ready .home__step {
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    opacity 0.6s ease,
+    translate 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.25),
+    scale 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.25);
+}
+
+.fx-ready .home__step:not(.is-in) {
+  opacity: 0;
+  translate: 0 44px;
+  scale: 0.9;
+}
+
+.fx-ready .home__step--trade { transition-delay: 0s, 0s, 0.12s, 0.12s, 0.12s; }
+.fx-ready .home__step--own { transition-delay: 0s, 0s, 0.24s, 0.24s, 0.24s; }
+
+.home__step:hover .home__step-num {
+  animation: fxWiggle 0.5s ease-in-out;
+}
+
+/* ---------- pointer trail + confetti pieces (made by the script) ---------- */
+
+.fx-bit {
+  position: fixed;
+  z-index: 60;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+.fx-bit svg {
+  display: block;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page.home .home__headline,
+  .page.home .page__hl,
+  .page.home .home__sub,
+  .page.home .home__card,
+  .page.home .home__brand,
+  .page.home .home__sunburst,
+  .page.home .home__ring,
+  .page.home .wl-form__submit,
+  .page.home .wl-form__submit::after,
+  .page.home .page__spark {
+    animation: none;
+  }
+
+  .fx-ready .home__step:not(.is-in) {
+    opacity: 1;
+    translate: none;
+    scale: none;
+  }
+
+  .page.home .home__brand,
+  .fx-ready .home__sunburst {
+    translate: none;
+  }
+
+  .fx-bit {
+    display: none;
+  }
+}

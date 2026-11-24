@@ -1,0 +1,302 @@
+/* ------------------------------------------------------------------ */
+/*  Docs page — extra motion (2026-11-25)                              */
+/*  Same layout, colours and type. Motion only, layered on top with    */
+/*  the individual translate / scale properties. Loaded on /docs only. */
+/* ------------------------------------------------------------------ */
+
+@keyframes dfxRise {
+  from {
+    opacity: 0;
+    translate: 0 30px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+@keyframes dfxPop {
+  0% {
+    opacity: 0;
+    scale: 0.4;
+  }
+  60% {
+    opacity: 1;
+    scale: 1.06;
+  }
+  100% {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+@keyframes dfxWipe {
+  from {
+    clip-path: inset(-14px 100% -14px -14px);
+  }
+  to {
+    clip-path: inset(-14px -14px -14px -14px);
+  }
+}
+
+@keyframes dfxDrift {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  33% {
+    translate: 8px -14px;
+  }
+  66% {
+    translate: -8px -6px;
+  }
+}
+
+@keyframes dfxStripes {
+  to {
+    background-position: 28.284px 0;
+  }
+}
+
+@keyframes dfxBreathe {
+  50% {
+    scale: 1.035;
+  }
+}
+
+@keyframes dfxShine {
+  0%,
+  62% {
+    translate: -140% 0;
+  }
+  100% {
+    translate: 260% 0;
+  }
+}
+
+@keyframes dfxBadge {
+  0% {
+    scale: 0.3;
+    rotate: -90deg;
+  }
+  70% {
+    scale: 1.15;
+    rotate: 8deg;
+  }
+  100% {
+    scale: 1;
+    rotate: 0deg;
+  }
+}
+
+@keyframes dfxWiggle {
+  25% {
+    rotate: -12deg;
+  }
+  75% {
+    rotate: 12deg;
+  }
+}
+
+/* ---------- hero entrance ---------- */
+
+.docs .docs__title {
+  animation: dfxRise 0.7s cubic-bezier(0.2, 0.9, 0.3, 1) 0.15s both;
+}
+
+.docs .docs__hl {
+  animation: dfxWipe 0.7s cubic-bezier(0.7, 0, 0.2, 1) 0.7s both;
+}
+
+.docs .docs__tldr {
+  animation: dfxRise 0.7s cubic-bezier(0.2, 0.9, 0.3, 1) 0.4s both;
+}
+
+.docs .docs__art .home__sunburst {
+  animation:
+    homeSpin 60s linear infinite,
+    dfxPop 0.9s cubic-bezier(0.2, 0.9, 0.3, 1) 0.2s both,
+    dfxBreathe 5s ease-in-out 1.2s infinite;
+}
+
+.docs .docs__art .home__ring {
+  animation:
+    homeSpin 40s linear infinite reverse,
+    dfxPop 0.9s cubic-bezier(0.2, 0.9, 0.3, 1) 0.35s both;
+}
+
+/* The raccoon head already floats (homeFloat); pop it in via a wrapper-free
+   trick: animate opacity/scale with a second animation entry. */
+.docs .docs__art-head {
+  animation:
+    homeFloat 4.5s ease-in-out infinite,
+    dfxPop 0.9s cubic-bezier(0.2, 0.9, 0.3, 1) 0.5s both;
+  cursor: pointer;
+  translate: calc(var(--px, 0) * 14px) calc(var(--py, 0) * 14px);
+  transition: translate 220ms ease-out;
+}
+
+.fx-ready .docs__art .home__sunburst {
+  translate: calc(var(--px, 0) * -10px) calc(var(--py, 0) * -10px);
+  transition: translate 300ms ease-out;
+}
+
+/* ---------- sparkles drift on top of twinkle ---------- */
+
+.docs .docs__spark {
+  animation-name: twinkle, dfxDrift;
+  animation-timing-function: ease-in-out, ease-in-out;
+  animation-iteration-count: infinite, infinite;
+}
+
+.docs .docs__spark--a { animation-duration: 2.6s, 7s; animation-delay: 0s, 0s; }
+.docs .docs__spark--b { animation-duration: 2.9s, 8.5s; animation-delay: -1.2s, -3s; }
+.docs .docs__spark--c { animation-duration: 3.1s, 6.5s; animation-delay: -0.7s, -1.5s; }
+
+/* ---------- table of contents ---------- */
+
+.fx-ready .docs__toc {
+  animation: dfxRise 0.7s cubic-bezier(0.2, 0.9, 0.3, 1) 0.5s both;
+}
+
+.fx-ready .docs__toc li {
+  animation: dfxRise 0.5s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+
+.fx-ready .docs__toc li:nth-child(1) { animation-delay: 0.65s; }
+.fx-ready .docs__toc li:nth-child(2) { animation-delay: 0.72s; }
+.fx-ready .docs__toc li:nth-child(3) { animation-delay: 0.79s; }
+.fx-ready .docs__toc li:nth-child(4) { animation-delay: 0.86s; }
+.fx-ready .docs__toc li:nth-child(5) { animation-delay: 0.93s; }
+.fx-ready .docs__toc li:nth-child(6) { animation-delay: 1s; }
+
+.docs__toc a {
+  transition:
+    background-color 140ms ease,
+    translate 180ms ease;
+}
+
+.docs__toc a:hover {
+  translate: 4px 0;
+}
+
+.docs__toc a[aria-current="true"] .docs__toc-num {
+  animation: dfxBadge 0.45s cubic-bezier(0.3, 1.4, 0.5, 1) both;
+}
+
+/* ---------- section cards ---------- */
+
+/* Header stripes slowly scroll. Redrawn as a 28.284px tile (= the same
+   10px / 10px 135deg stripes) so the loop is seamless and looks identical. */
+.docs__head {
+  background-image: linear-gradient(
+    135deg,
+    rgba(23, 23, 23, 0.09) 25%,
+    transparent 25% 50%,
+    rgba(23, 23, 23, 0.09) 50% 75%,
+    transparent 75%
+  );
+  background-size: 28.284px 28.284px;
+  animation: dfxStripes 2.4s linear infinite;
+}
+
+/* Number badge pops in when its card scrolls into view, wiggles on hover. */
+.fx-ready .docs__card:not(.is-in) .docs__num {
+  scale: 0.3;
+  rotate: -90deg;
+}
+
+.fx-ready .docs__card.is-in .docs__num {
+  animation: dfxBadge 0.55s cubic-bezier(0.3, 1.4, 0.5, 1) 0.15s both;
+}
+
+.docs__card:hover .docs__num {
+  animation: dfxWiggle 0.5s ease-in-out;
+}
+
+/* Marker highlights get drawn as you reach them. */
+.docs__mark {
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  transition: background-size 0.8s cubic-bezier(0.6, 0, 0.2, 1) 0.45s;
+}
+
+.fx-ready .docs__card:not(.is-in) .docs__mark {
+  background-size: 0% 100%;
+}
+
+/* Body paragraphs and the three buy / build / compete cards stagger in. */
+.fx-ready .docs__body > * {
+  transition:
+    opacity 0.6s ease,
+    translate 0.6s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+.fx-ready .docs__card:not(.is-in) .docs__body > * {
+  opacity: 0;
+  translate: 0 18px;
+}
+
+.fx-ready .docs__body > :nth-child(2) { transition-delay: 0.1s; }
+.fx-ready .docs__body > :nth-child(3) { transition-delay: 0.2s; }
+
+.docs__trio-card {
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    opacity 0.5s ease,
+    scale 0.55s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+
+.fx-ready .docs__card:not(.is-in) .docs__trio-card {
+  opacity: 0;
+  scale: 0.8;
+}
+
+.fx-ready .docs__trio-card--build { transition-delay: 0s, 0s, 0.12s, 0.12s; }
+.fx-ready .docs__trio-card--compete { transition-delay: 0s, 0s, 0.24s, 0.24s; }
+
+/* ---------- call to action ---------- */
+
+.docs__cta .btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.docs__cta .btn::after {
+  content: "";
+  position: absolute;
+  top: -20%;
+  bottom: -20%;
+  left: 0;
+  width: 28%;
+  background: rgba(255, 245, 0, 0.45);
+  transform: skewX(-22deg);
+  pointer-events: none;
+  animation: dfxShine 4.5s ease-in-out 1.5s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .docs .docs__title,
+  .docs .docs__hl,
+  .docs .docs__tldr,
+  .docs .docs__art .home__sunburst,
+  .docs .docs__art .home__ring,
+  .docs .docs__art-head,
+  .docs .docs__spark,
+  .docs__head,
+  .docs__cta .btn::after,
+  .docs__toc a[aria-current="true"] .docs__toc-num,
+  .docs__card:hover .docs__num {
+    animation: none;
+  }
+
+  .docs .docs__art-head,
+  .fx-ready .docs__art .home__sunburst {
+    translate: none;
+  }
+
+  .docs__toc a:hover {
+    translate: none;
+  }
+}
