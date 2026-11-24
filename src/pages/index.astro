@@ -14,7 +14,7 @@ const year = new Date().getFullYear();
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Akipoly is the property-trading board game, reimagined as a bold, playful GameFi experience on Arc. Roll the dice, own the board. Join the waitlist."
+      content="Akipoly: Roll. Trade. Own the Arc. The property-trading board game, reimagined as a bold, playful arcade GameFi on Arc. Join the waitlist."
     />
     <meta name="theme-color" content="#FFF500" />
     <link rel="icon" href="/icons/favicon.svg" type="image/svg+xml" />
@@ -25,10 +25,10 @@ const year = new Date().getFullYear();
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Chango&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Jersey+25&family=Bricolage+Grotesque:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <title>Akipoly — Roll the Dice. Own the Board.</title>
+    <title>Akipoly — Roll. Trade. Own the Arc.</title>
     <script is:inline>
       try {
         if (sessionStorage.getItem('akipoly:wave-nav') === '1') {
@@ -40,8 +40,6 @@ const year = new Date().getFullYear();
     </script>
   </head>
   <body>
-    <!-- Three.js animated monopoly background -->
-    <canvas class="dice-field" aria-hidden="true"></canvas>
     <a class="skip-link" href="#main">Skip to content</a>
     <a class="page__help" href="/docs" aria-label="What is Akipoly? Read the explainer">?</a>
     <a class="page__dash" href="/play" aria-label="Open the Akipoly minigame">
@@ -53,7 +51,7 @@ const year = new Date().getFullYear();
       </svg>
       play
     </a>
-    <main id="main" class="page">
+    <main id="main" class="page home">
       <!-- decorative sparkles -->
       <svg class="page__spark page__spark--tl twinkle twinkle--1" width="54" height="54" viewBox="0 0 72 72" aria-hidden="true">
         <polygon points="36,2 41.5,26.5 66,32 41.5,37.5 36,62 30.5,37.5 6,32 30.5,26.5" fill="#FF80B5" stroke="#171717" stroke-width="4" stroke-linejoin="round" />
@@ -68,117 +66,83 @@ const year = new Date().getFullYear();
         <polygon points="36,2 41.5,26.5 66,32 41.5,37.5 36,62 30.5,37.5 6,32 30.5,26.5" fill="#A78BFA" stroke="#171717" stroke-width="4" stroke-linejoin="round" />
       </svg>
 
-      <h1>
-        <img
-          class="page__logo"
-          src="/icons/akipoly-wordmark@1000.png"
-          width="1000"
-          height="798"
-          alt="Akipoly"
-        />
-      </h1>
-      <p class="page__tag">we create <span class="page__hl">monopoly</span> on arc</p>
+      <section class="home__hero">
+        <div class="home__copy">
+          <p class="home__badge">
+            <span class="home__dot" aria-hidden="true"></span>
+            Waitlist open · Built on Arc
+          </p>
 
-      <div class="page__form" id="waitlist">
-        <WaitlistForm />
-      </div>
+          <p class="page__tag home__headline">
+            Roll. Trade. <span class="page__hl">Own the Arc.</span>
+          </p>
+          <p class="home__sub">
+            The classic property-trading game, rebuilt as a loud, fast,
+            arcade-bright board on Arc. Grab a spot on the waitlist and be first
+            to the dice.
+          </p>
+
+          <div class="page__form home__card" id="waitlist">
+            <WaitlistForm />
+          </div>
+        </div>
+
+        <div class="home__art">
+          <div class="home__sunburst" aria-hidden="true"></div>
+          <svg class="home__ring" viewBox="0 0 200 200" aria-hidden="true" focusable="false">
+            <defs>
+              <path id="home-ring-path" d="M100,100 m-91,0 a91,91 0 1,1 182,0 a91,91 0 1,1 -182,0" />
+            </defs>
+            <text font-size="13" fill="#171717" textLength="568" lengthAdjust="spacing">
+              <textPath href="#home-ring-path">ROLL • TRADE • OWN • ROLL • TRADE • OWN • ROLL • TRADE • OWN •</textPath>
+            </text>
+          </svg>
+          <h1 class="home__brand">
+            <img
+              class="page__logo"
+              src="/icons/akipoly-wordmark@1000.png"
+              width="1000"
+              height="798"
+              alt="Akipoly"
+            />
+          </h1>
+        </div>
+      </section>
+
+      <ul class="home__steps" aria-label="How Akipoly plays">
+        <li class="home__step home__step--roll">
+          <span class="home__step-num" aria-hidden="true">1</span>
+          <h2>Roll</h2>
+          <p>The dice decide your move. Luck gets the first word.</p>
+        </li>
+        <li class="home__step home__step--trade">
+          <span class="home__step-num" aria-hidden="true">2</span>
+          <h2>Trade</h2>
+          <p>Swap, bargain and bluff your way to the best spots.</p>
+        </li>
+        <li class="home__step home__step--own">
+          <span class="home__step-num" aria-hidden="true">3</span>
+          <h2>Own</h2>
+          <p>Stack the board and walk away the boss.</p>
+        </li>
+      </ul>
 
       <p class="page__legal">
-        © {year} Akipoly. All rights reserved.<br />
+        © {year} akipoly. all rights reserved.<br />
       </p>
     </main>
+    <div class="home__ticker" aria-hidden="true">
+      <div class="home__ticker-track">
+        {Array.from({ length: 2 }).map(() => (
+          <div class="home__ticker-group">
+            <span>Roll</span><i>✦</i><span>Trade</span><i>✦</i><span>Own</span><i>✦</i><span>Akipoly</span><i>✦</i><span>Built on Arc</span><i>✦</i>
+            <span>Roll</span><i>✦</i><span>Trade</span><i>✦</i><span>Own</span><i>✦</i><span>Akipoly</span><i>✦</i><span>Built on Arc</span><i>✦</i>
+          </div>
+        ))}
+      </div>
+    </div>
     <Waterwave />
-    <script>
-      import * as THREE from 'three';
-
-      const canvas = document.querySelector('.dice-field');
-      if (!canvas) throw new Error('DiceField: canvas not found');
-
-      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-      const scene = new THREE.Scene();
-      scene.background = null;
-      const camera = new THREE.PerspectiveCamera(60, canvas.clientWidth / canvas.clientHeight, 0.1, 100);
-      camera.position.z = 12;
-
-      const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
-      renderer.setSize(canvas.clientWidth, canvas.clientHeight);
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-
-      const ambient = new THREE.AmbientLight(0xffffff, 0.6);
-      scene.add(ambient);
-      const dir = new THREE.DirectionalLight(0xffffff, 0.8);
-      dir.position.set(5, 10, 7);
-      scene.add(dir);
-
-      const group = new THREE.Group();
-      scene.add(group);
-
-      const colors = [0xfff500, 0x9db7fb, 0xff6b4a, 0xb8f28b, 0xff80b5, 0xa78bfa];
-      const diceGeo = new THREE.BoxGeometry(0.9, 0.9, 0.9);
-      const diceMat = (color) => new THREE.MeshStandardMaterial({ color, flatShading: true });
-
-      const dice = [];
-      const count = reduced ? 4 : 10;
-
-      for (let i = 0; i < count; i++) {
-        const mesh = new THREE.Mesh(diceGeo, diceMat(colors[i % colors.length]));
-        mesh.position.set(
-          (Math.random() - 0.5) * 22,
-          (Math.random() - 0.5) * 14,
-          (Math.random() - 0.5) * 6
-        );
-        mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
-        mesh.userData = {
-          drift: new THREE.Vector3((Math.random() - 0.5) * 0.02, (Math.random() - 0.5) * 0.02, (Math.random() - 0.5) * 0.02),
-          spin: new THREE.Vector3((Math.random() - 0.5) * 0.015, (Math.random() - 0.5) * 0.015, (Math.random() - 0.5) * 0.015),
-          floatOffset: Math.random() * Math.PI * 2,
-        };
-        group.add(mesh);
-        dice.push(mesh);
-      }
-
-      const edgesGeo = new THREE.EdgesGeometry(diceGeo);
-      const edgesMat = new THREE.LineBasicMaterial({ color: 0x171717, linewidth: 2 });
-
-      function raf() {
-        if (!reduced) {
-          const t = performance.now() * 0.001;
-          dice.forEach((m) => {
-            m.position.x += m.userData.drift.x;
-            m.position.y += m.userData.drift.y;
-            m.position.z += Math.sin(t + m.userData.floatOffset) * 0.01;
-            m.rotation.x += m.userData.spin.x;
-            m.rotation.y += m.userData.spin.y;
-            m.rotation.z += m.userData.spin.z;
-            if (m.position.x > 12) m.position.x = -12;
-            if (m.position.x < -12) m.position.x = 12;
-            if (m.position.y > 8) m.position.y = -8;
-            if (m.position.y < -8) m.position.y = 8;
-          });
-        }
-        renderer.render(scene, camera);
-        requestAnimationFrame(raf);
-      }
-      raf();
-
-      const onResize = () => {
-        camera.aspect = canvas.clientWidth / canvas.clientHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(canvas.clientWidth, canvas.clientHeight);
-      };
-      window.addEventListener('resize', onResize);
-    </script>
     <style>
-      .dice-field {
-        position: fixed;
-        inset: 0;
-        z-index: -1;
-        pointer-events: none;
-        width: 100vw;
-        height: 100vh;
-        display: block;
-      }
       .page {
         position: relative;
         z-index: 1;

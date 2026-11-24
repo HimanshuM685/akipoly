@@ -22,7 +22,7 @@ async function advanceDueRounds(): Promise<number> {
   let failed = 0;
   const due = await pool.query<{ id: string }>(
     `select id from public.rounds
-      where phase in ('betting', 'rolling') and phase_ends_at <= now()
+      where phase in ('betting', 'drawing', 'rolling') and phase_ends_at <= now()
       order by phase_ends_at limit $1`,
     [BATCH],
   );
@@ -31,9 +31,9 @@ async function advanceDueRounds(): Promise<number> {
       const changed = await withTx(async (c) => {
         const round = (
           await c.query<RoundRow>(
-            `select r.id, r.game_id, g.lobby_id, g.pot, r.round_number, r.phase, r.prev_ball, r.ball, r.seed, r.phase_ends_at
+            `select r.id, r.game_id, g.lobby_id, g.pot, r.round_number, r.phase, r.prev_ball, r.ball, r.phase_ends_at
                from public.rounds r join public.games g on g.id = r.game_id
-              where r.id = $1 and r.phase in ('betting', 'rolling') and r.phase_ends_at <= now()
+              where r.id = $1 and r.phase in ('betting', 'drawing', 'rolling') and r.phase_ends_at <= now()
               for update of r skip locked`,
             [id],
           )
@@ -78,7 +78,7 @@ async function startDueLobbies(): Promise<number> {
 async function msUntilNextDue(): Promise<number | null> {
   const res = await pool.query<{ ms: number | null }>(
     `select (extract(epoch from least(
-               (select min(phase_ends_at) from public.rounds where phase in ('betting', 'rolling')),
+               (select min(phase_ends_at) from public.rounds where phase in ('betting', 'drawing', 'rolling')),
                (select min(starts_at) from public.lobbies where status = 'starting')
              ) - now()) * 1000)::float8 as ms`,
   );

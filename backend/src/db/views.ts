@@ -2,7 +2,34 @@
  * Read models pushed to clients. One load per change per lobby, then the
  * private `me` part is attached per socket from the same data.
  */
+import { getAddress } from 'viem';
+import { env } from '../config/env.js';
 import type { Db } from './pool.js';
+import type { RoundVrf, VrfContracts } from '../shared/protocol.js';
+
+const VRF_COLUMNS = 'vrf_request_id, vrf_request_tx, vrf_request_block, vrf_fulfill_tx, vrf_random_word';
+interface VrfColumns {
+  vrf_request_id: string | null;
+  vrf_request_tx: string | null;
+  vrf_request_block: bigint | null;
+  vrf_fulfill_tx: string | null;
+  vrf_random_word: string | null;
+}
+
+function vrfOf(r: VrfColumns): RoundVrf | null {
+  if (!r.vrf_request_id || !r.vrf_request_tx || r.vrf_request_block === null || !r.vrf_random_word) return null;
+  return {
+    requestId: r.vrf_request_id,
+    requestTx: r.vrf_request_tx,
+    requestBlock: r.vrf_request_block.toString(),
+    fulfillTx: r.vrf_fulfill_tx,
+    randomWord: r.vrf_random_word,
+  };
+}
+
+export function vrfContracts(): VrfContracts {
+  return { rounds: getAddress(env.VRF_ROUNDS_ADDRESS), coordinator: getAddress(env.VRF_COORDINATOR_ADDRESS) };
+}
 import type {
   CareerEntry,
   Direction,
@@ -129,12 +156,10 @@ export async function loadGame(db: Db, gameId: string): Promise<LoadedGame | nul
       phase: RoundPhase;
       prev_ball: number | null;
       ball: number | null;
-      seed: string;
-      seed_hash: string;
       outcome: RoundOutcome | null;
       phase_ends_at: Date;
-    }>(
-      `select id, round_number, phase, prev_ball, ball, seed, seed_hash, outcome, phase_ends_at
+    } & VrfColumns>(
+      `select id, round_number, phase, prev_ball, ball, outcome, phase_ends_at, ${VRF_COLUMNS}
          from public.rounds where game_id = $1 order by round_number desc limit 11`,
       [gameId],
     ),
@@ -157,9 +182,9 @@ export async function loadGame(db: Db, gameId: string): Promise<LoadedGame | nul
       number: current.round_number,
       phase: current.phase,
       prevBall: current.prev_ball,
-      ball: current.phase === 'betting' ? null : current.ball,
-      seedHash: current.seed_hash,
-      seed: current.phase === 'settled' ? current.seed : null,
+      // Unknown to everyone until the VRF answers; set together with the move to rolling.
+      ball: current.phase === 'betting' || current.phase === 'drawing' ? null : current.ball,
+      vrf: vrfOf(current),
       phaseEndsAt: current.phase_ends_at.toISOString(),
       picksIn: picksRes.rows.length,
       sidePools: { higher: pools.higher.toString(), lower: pools.lower.toString() },
@@ -249,8 +274,8 @@ export async function careerFor(db: Db, userId: string): Promise<CareerEntry[]> 
 }
 
 /**
- * Full post-game breakdown for one participant: settled rounds (with seeds
- * and everyone's calls), standings, and the viewer's own USDC ledger.
+ * Full post-game breakdown for one participant: settled rounds (with their
+ * on-chain VRF draws and everyone's calls), standings, and the viewer's own USDC ledger.
  * Returns null if the viewer didn't play this game.
  */
 export async function gameReview(db: Db, gameId: string, userId: string, treasury: string): Promise<GameReview | null> {
@@ -299,11 +324,14 @@ export async function gameReview(db: Db, gameId: string, userId: string, treasur
     prev_ball: number | null;
     ball: number;
     outcome: RoundOutcome;
-    seed: string;
-    seed_hash: string;
-  }>(
-    `select id, round_number, prev_ball, ball, outcome, seed, seed_hash from public.rounds
-        where game_id = $1 and phase = 'settled' order by round_number`,
+    legacy_seed: string | null;
+    legacy_seed_hash: string | null;
+  } & VrfColumns>(
+    `select r.id, r.round_number, r.prev_ball, r.ball, r.outcome, ${VRF_COLUMNS},
+            l.seed as legacy_seed, l.seed_hash as legacy_seed_hash
+       from public.rounds r left join public.legacy_round_seeds l on l.round_id = r.id
+      where r.game_id = $1 and r.phase = 'settled' and r.ball is not null -- undrawn void rounds have no ball
+      order by r.round_number`,
     [gameId],
   );
   const picksRes = await db.query<{ round_id: string; user_id: string; direction: Direction; side_bet: bigint }>(
@@ -364,8 +392,8 @@ export async function gameReview(db: Db, gameId: string, userId: string, treasur
     prevBall: r.prev_ball,
     ball: r.ball,
     outcome: r.outcome,
-    seed: r.seed,
-    seedHash: r.seed_hash,
+    vrf: vrfOf(r),
+    legacy: r.legacy_seed && r.legacy_seed_hash ? { seed: r.legacy_seed, seedHash: r.legacy_seed_hash } : null,
     picks: picksRes.rows
       .filter((p) => p.round_id === r.id)
       .map((p) => ({ userId: p.user_id, direction: p.direction, sideBet: p.side_bet.toString() })),
@@ -408,6 +436,7 @@ export async function gameReview(db: Db, gameId: string, userId: string, treasur
     fee: head.fee.toString(),
     winnerUserId: head.winner_user_id,
     treasury,
+    vrfContracts: vrfContracts(),
     players: players.map((p) => ({
       userId: p.user_id,
       displayName: p.display_name,

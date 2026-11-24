@@ -6,7 +6,7 @@
 import { ZodError } from 'zod';
 import { env, arc } from '../config/env.js';
 import { pool } from '../db/pool.js';
-import { careerFor, gameReview, upsertUser } from '../db/views.js';
+import { careerFor, gameReview, upsertUser, vrfContracts } from '../db/views.js';
 import { verifyIdentityToken } from '../auth/privy.js';
 import { treasuryAddress } from '../chain/usdc.js';
 import { AppError, forbidden } from '../errors.js';
@@ -90,6 +90,7 @@ async function authenticate(s: Session, msg: Extract<ClientMessage, { type: 'aut
     walletAddress,
     network: arc.network,
     treasury: treasuryAddress,
+    vrfContracts: vrfContracts(),
     limits: {
       minBuyIn: env.MIN_BUY_IN_USDC.toString(),
       maxBuyIn: env.MAX_BUY_IN_USDC.toString(),

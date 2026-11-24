@@ -1,24 +1,13 @@
 /**
- * Provably fair ball. Before bets close the server publishes sha256(seed);
- * after the round it reveals the seed. Anyone can recompute:
- *   ball = uint64(HMAC-SHA256(seed, `${gameId}:${round}`)[0..8]) mod 17
- * (64-bit mod 17 bias is ~1e-18, negligible.)
+ * Provably fair ball, via Akipoly's on-chain VRF (modelled on Chainlink VRF v2.5).
+ *
+ * When betting closes, the treasury calls AkipolyRounds.requestBall(game, round).
+ * The coordinator derives the VRF input from on-chain data only:
+ *   preSeed = keccak256(keyHash, consumer, nonce)
+ *   alpha   = keccak256(preSeed, blockhash(requestBlock))
+ * The oracle proves Gamma = sk * hashToCurve(pk, alpha). The coordinator verifies
+ * the proof on-chain and passes keccak256(Gamma) on as random words, and
+ * AkipolyRounds computes the ball itself. The server never chooses or holds a
+ * random value. It relays the proof and reads the result back.
  */
-import { createHash, createHmac, randomBytes } from 'node:crypto';
-import { BALL_MAX, BALL_MIN } from '../shared/protocol.js';
-
-const RANGE = BigInt(BALL_MAX - BALL_MIN + 1);
-
-export function hashSeed(seed: string): string {
-  return createHash('sha256').update(seed).digest('hex');
-}
-
-export function newSeed(): { seed: string; seedHash: string } {
-  const seed = randomBytes(32).toString('hex');
-  return { seed, seedHash: hashSeed(seed) };
-}
-
-export function deriveBall(seed: string, gameId: string, roundNumber: number): number {
-  const digest = createHmac('sha256', seed).update(`${gameId}:${roundNumber}`).digest();
-  return BALL_MIN + Number(digest.readBigUInt64BE(0) % RANGE);
-}
+export { BALL_RANGE, ballFromRandomWord, gameIdToBytes16 } from '../shared/vrf.js';

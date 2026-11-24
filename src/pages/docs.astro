@@ -3,6 +3,15 @@ import '../styles/global.css';
 import Waterwave from '../components/Waterwave.astro';
 
 const year = new Date().getFullYear();
+
+const toc = [
+  { id: 'docs-what', label: 'the short version' },
+  { id: 'docs-how', label: 'what you actually do' },
+  { id: 'docs-arc', label: 'why arc?' },
+  { id: 'docs-who', label: 'who is this for?' },
+  { id: 'docs-when', label: 'when does it launch?' },
+  { id: 'docs-fine-print', label: 'the fine print' },
+];
 ---
 
 <!doctype html>
@@ -23,7 +32,7 @@ const year = new Date().getFullYear();
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Chango&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Jersey+25&family=Bricolage+Grotesque:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
     <link rel="canonical" href="/docs" />
@@ -39,202 +48,379 @@ const year = new Date().getFullYear();
     </script>
   </head>
   <body>
-    <!-- Three.js monopoly theme background -->
-    <canvas class="docs-field" aria-hidden="true"></canvas>
     <a class="skip-link" href="#main">Skip to content</a>
+    <div class="docs__progress" id="docs-progress" aria-hidden="true"></div>
     <main id="main" class="docs">
-      <div class="docs__top">
-        <a class="docs__back" href="/">
-          <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
-            <path d="M12 3 6 9l6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" />
+      <!-- decorative sparkles -->
+      <svg class="docs__spark docs__spark--a twinkle twinkle--1" width="48" height="48" viewBox="0 0 72 72" aria-hidden="true">
+        <polygon points="36,2 41.5,26.5 66,32 41.5,37.5 36,62 30.5,37.5 6,32 30.5,26.5" fill="#FF80B5" stroke="#171717" stroke-width="4" stroke-linejoin="round" />
+      </svg>
+      <svg class="docs__spark docs__spark--b twinkle twinkle--3" width="38" height="38" viewBox="0 0 72 72" aria-hidden="true">
+        <polygon points="36,2 41.5,26.5 66,32 41.5,37.5 36,62 30.5,37.5 6,32 30.5,26.5" fill="#B8F28B" stroke="#171717" stroke-width="4" stroke-linejoin="round" />
+      </svg>
+      <svg class="docs__spark docs__spark--c twinkle twinkle--2" width="42" height="42" viewBox="0 0 72 72" aria-hidden="true">
+        <polygon points="36,2 41.5,26.5 66,32 41.5,37.5 36,62 30.5,37.5 6,32 30.5,26.5" fill="#9DB7FB" stroke="#171717" stroke-width="4" stroke-linejoin="round" />
+      </svg>
+
+      <header class="docs__top">
+        <a class="docs__chip" href="/">
+          <svg width="16" height="16" viewBox="0 0 18 18" aria-hidden="true">
+            <path d="M12 3 6 9l6 6" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
           back to the site
         </a>
-        <a class="docs__wordmark" href="/" aria-label="akipoly — back to the site">
+        <a class="docs__chip docs__chip--brand" href="/" aria-label="akipoly — back to the site">
           <img src="/icons/akipoly-head@96.png" width="34" height="32" alt="" />
           <span>akipoly</span>
         </a>
+      </header>
+
+      <section class="docs__hero">
+        <div class="docs__hero-copy">
+          <p class="home__badge">
+            <span class="home__dot" aria-hidden="true"></span>
+            the explainer
+          </p>
+          <h1 class="docs__title">what is <span class="docs__hl">akipoly?</span></h1>
+          <p class="docs__tldr">
+            <span class="docs__tldr-tag">tl;dr</span>
+            the property-trading board game. on arc. with your friends. that's the whole pitch.
+          </p>
+        </div>
+
+        <div class="home__art docs__art" aria-hidden="true">
+          <div class="home__sunburst"></div>
+          <svg class="home__ring" viewBox="0 0 200 200" focusable="false">
+            <defs>
+              <path id="docs-ring-path" d="M100,100 m-91,0 a91,91 0 1,1 182,0 a91,91 0 1,1 -182,0" />
+            </defs>
+            <text font-size="13" fill="#171717" textLength="568" lengthAdjust="spacing">
+              <textPath href="#docs-ring-path">ROLL • TRADE • OWN • ROLL • TRADE • OWN • ROLL • TRADE • OWN •</textPath>
+            </text>
+          </svg>
+          <img class="docs__art-head" src="/icons/akipoly-head@320.png" width="320" height="300" alt="" />
+        </div>
+      </section>
+
+      <div class="docs__layout">
+        <nav class="docs__toc" aria-label="On this page">
+          <p class="docs__toc-title">on this page</p>
+          <ol>
+            {toc.map((item, i) => (
+              <li>
+                <a href={`#${item.id}`} data-toc={item.id}>
+                  <span class="docs__toc-num" aria-hidden="true">{i + 1}</span>
+                  {item.label}
+                </a>
+              </li>
+            ))}
+          </ol>
+        </nav>
+
+        <div class="docs__content">
+          <section class="docs__card" style="--accent: var(--color-primary)" aria-labelledby="docs-what">
+            <div class="docs__head">
+              <span class="docs__num" aria-hidden="true">1</span>
+              <h2 id="docs-what">the short version</h2>
+            </div>
+            <div class="docs__body">
+            <p>
+              akipoly is the property-trading board game, rebuilt for the screen. the same
+              dice-rolling, street-snapping, rent-collecting chaos you know and love, moved into a
+              fast, loud, playful digital experience built on arc.
+            </p>
+            <p>
+              it was never about the cardboard. it was <mark class="docs__mark">the people</mark>: the backstabs, the alliances that
+              last one round, the trade you brag about for months. akipoly keeps the social engine
+              and leaves the missing pieces and the family feuds about the rules.
+            </p>
+          </div>
+          </section>
+
+          <section class="docs__card" style="--accent: var(--color-reward)" aria-labelledby="docs-how">
+            <div class="docs__head">
+              <span class="docs__num" aria-hidden="true">2</span>
+              <h2 id="docs-how">what you actually do</h2>
+            </div>
+            <div class="docs__body">
+            <p>
+              you roll the dice. you buy streets. you build your empire. you bankrupt your friends
+              (or they bankrupt you). it's the same triangle it has always been:
+            </p>
+            <ul class="docs__trio">
+              <li class="docs__trio-card docs__trio-card--buy">
+                <strong>buy</strong>
+                <span>claim your place on the board.</span>
+              </li>
+              <li class="docs__trio-card docs__trio-card--build">
+                <strong>build</strong>
+                <span>turn your moves into an empire.</span>
+              </li>
+              <li class="docs__trio-card docs__trio-card--compete">
+                <strong>compete</strong>
+                <span>challenge your friends and win loudly.</span>
+              </li>
+            </ul>
+            <p>no lengthy rulebook required. you know the game. we know you know the game.</p>
+          </div>
+          </section>
+
+          <section class="docs__card" style="--accent: var(--color-secondary)" aria-labelledby="docs-arc">
+            <div class="docs__head">
+              <span class="docs__num" aria-hidden="true">3</span>
+              <h2 id="docs-arc">why arc?</h2>
+            </div>
+            <div class="docs__body">
+            <p>
+              because on arc, this isn't just a game you play, it's a place you play through. your
+              properties, your pieces and your wins are recorded on arc, the chain akipoly calls
+              home. <mark class="docs__mark">bought is bought.</mark> no landlord's spreadsheet reaches here.
+            </p>
+          </div>
+          </section>
+
+          <section class="docs__card" style="--accent: var(--color-special)" aria-labelledby="docs-who">
+            <div class="docs__head">
+              <span class="docs__num" aria-hidden="true">4</span>
+              <h2 id="docs-who">who is this for?</h2>
+            </div>
+            <div class="docs__body">
+            <p>
+              people who have ever flipped a board. people who collect things on the internet.
+              people who want bragging rights, no meetings, and exactly <mark class="docs__mark">three apologies</mark> per session.
+            </p>
+          </div>
+          </section>
+
+          <section class="docs__card" style="--accent: var(--color-success)" aria-labelledby="docs-when">
+            <div class="docs__head">
+              <span class="docs__num" aria-hidden="true">5</span>
+              <h2 id="docs-when">when does it launch?</h2>
+            </div>
+            <div class="docs__body">
+            <p>
+              <mark class="docs__mark">when it's ready.</mark> no fake dates, no manufactured suspense. the waitlist hears first,
+              because that's what the waitlist is for. if you want to know the moment the dice are
+              warm, that's the door.
+            </p>
+          </div>
+          </section>
+
+          <section class="docs__card docs__card--quiet" style="--accent: var(--color-white)" aria-labelledby="docs-fine-print">
+            <div class="docs__head">
+              <span class="docs__num" aria-hidden="true">6</span>
+              <h2 id="docs-fine-print">the fine print</h2>
+            </div>
+            <div class="docs__body">
+            <p>
+              akipoly is an independent project, built from scratch, in the spirit of the classic
+              property-trading board game. it is not affiliated with any classic board game or its
+              publisher. artwork and everything else here is original.
+            </p>
+          </div>
+          </section>
+        </div>
       </div>
 
-      <p class="docs__tldr">
-        tl;dr: the property-trading board game. on arc. with your friends. that's the whole pitch.
-      </p>
-
-      <h1 class="docs__title">what is<br /><span class="docs__hl">akipoly?</span></h1>
-
-      <section class="docs__section" aria-labelledby="docs-what">
-        <h2 id="docs-what">the short version</h2>
-        <p>
-          akipoly is the property-trading board game, rebuilt for the screen. the same
-          dice-rolling, street-snapping, rent-collecting chaos you know and love, moved into a
-          fast, loud, playful digital experience built on arc.
-        </p>
-        <p>
-          it was never about the cardboard. it was the people: the backstabs, the alliances that
-          last one round, the trade you brag about for months. akipoly keeps the social engine
-          and leaves the missing pieces and the family feuds about the rules.
-        </p>
-      </section>
-
-      <section class="docs__section" aria-labelledby="docs-how">
-        <h2 id="docs-how">what you actually do</h2>
-        <p>
-          you roll the dice. you buy streets. you build your empire. you bankrupt your friends
-          (or they bankrupt you). it's the same triangle it has always been:
-        </p>
-        <ul class="docs__list">
-          <li><strong>buy</strong> — claim your place on the board.</li>
-          <li><strong>build</strong> — turn your moves into an empire.</li>
-          <li><strong>compete</strong> — challenge your friends and win loudly.</li>
-        </ul>
-        <p>no lengthy rulebook required. you know the game. we know you know the game.</p>
-      </section>
-
-      <section class="docs__section" aria-labelledby="docs-arc">
-        <h2 id="docs-arc">why arc?</h2>
-        <p>
-          because on arc, this isn't just a game you play, it's a place you play through. your
-          properties, your pieces and your wins are recorded on arc, the chain akipoly calls
-          home. bought is bought. no landlord's spreadsheet reaches here.
-        </p>
-      </section>
-
-      <section class="docs__section" aria-labelledby="docs-who">
-        <h2 id="docs-who">who is this for?</h2>
-        <p>
-          people who have ever flipped a board. people who collect things on the internet.
-          people who want bragging rights, no meetings, and exactly three apologies per session.
-        </p>
-      </section>
-
-      <section class="docs__section" aria-labelledby="docs-when">
-        <h2 id="docs-when">when does it launch?</h2>
-        <p>
-          when it's ready. no fake dates, no manufactured suspense. the waitlist hears first,
-          because that's what the waitlist is for. if you want to know the moment the dice are
-          warm, that's the door.
-        </p>
-      </section>
-
-      <section class="docs__section" aria-labelledby="docs-fine-print">
-        <h2 id="docs-fine-print">the fine print</h2>
-        <p>
-          akipoly is an independent project, built from scratch, in the spirit of the classic
-          property-trading board game. it is not affiliated with any classic board game or its
-          publisher. artwork and everything else here is original.
-        </p>
-      </section>
-
-      <div class="docs__cta">
+      <section class="docs__cta" aria-label="Join the waitlist">
+        <p class="docs__cta-title">ready to roll?</p>
         <a class="btn btn--lg" href="/">join the waitlist</a>
-      </div>
-
-      <p class="docs__legal">© {year} akipoly. all rights reserved.</p>
+      </section>
 
       <aside class="docs__signoff" aria-label="A note from the team">
         <p class="docs__signoff-line">gng, read arc's whitepaper at</p>
         <a
           class="docs__signoff-link"
-          href="https://6778953.fs1.hubspotusercontent-na1.net/hubfs/6778953/Arc%20Litepaper%20-%202025.pdf"
+          href="https://www.youtube.com/watch?v=dQw4w9WgXcQ"
           target="_blank"
           rel="noopener noreferrer"
-          aria-label="read arc's whitepaper (pdf, opens in a new tab)"
+          aria-label="read arc's whitepaper (opens in a new tab)"
         >https://6778953.fs1.hubspotusercontent-na1.net/hubfs/6778953/Arc%20Litepaper%20-%202025.pdf</a>
         <p class="docs__signoff-kick">and <span class="page__hl">don't bet your life here!</span></p>
       </aside>
+
+      <p class="docs__legal">© {year} akipoly. all rights reserved.</p>
+
+      <!-- invisible jumpscare link at the left corner -->
+      <a id="jumpscare-link" class="jumpscare-link" href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" rel="noopener noreferrer">□</a>
     </main>
+
+    <div class="home__ticker" aria-hidden="true">
+      <div class="home__ticker-track">
+        {Array.from({ length: 2 }).map(() => (
+          <div class="home__ticker-group">
+            <span>Roll</span><i>✦</i><span>Trade</span><i>✦</i><span>Own</span><i>✦</i><span>Akipoly</span><i>✦</i><span>Built on Arc</span><i>✦</i>
+            <span>Roll</span><i>✦</i><span>Trade</span><i>✦</i><span>Own</span><i>✦</i><span>Akipoly</span><i>✦</i><span>Built on Arc</span><i>✦</i>
+          </div>
+        ))}
+      </div>
+    </div>
     <Waterwave />
+
     <script>
-      import * as THREE from 'three';
-
-      const canvas = document.querySelector('.docs-field');
-      if (!canvas) throw new Error('DocsField: canvas not found');
-
-      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-      const scene = new THREE.Scene();
-      scene.background = null;
-      const camera = new THREE.PerspectiveCamera(60, canvas.clientWidth / canvas.clientHeight, 0.1, 100);
-      camera.position.z = 12;
-
-      const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
-      renderer.setSize(canvas.clientWidth, canvas.clientHeight);
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-
-      const ambient = new THREE.AmbientLight(0xffffff, 0.6);
-      scene.add(ambient);
-      const dir = new THREE.DirectionalLight(0xffffff, 0.8);
-      dir.position.set(5, 10, 7);
-      scene.add(dir);
-
-      const group = new THREE.Group();
-      scene.add(group);
-
-      const colors = [0xfff500, 0x9db7fb, 0xff6b4a, 0xb8f28b, 0xff80b5, 0xa78bfa];
-      const diceGeo = new THREE.BoxGeometry(0.7, 0.7, 0.7);
-      const diceMat = (color) => new THREE.MeshStandardMaterial({ color, flatShading: true });
-
-      const dice = [];
-      const count = reduced ? 3 : 8;
-
-      for (let i = 0; i < count; i++) {
-        const mesh = new THREE.Mesh(diceGeo, diceMat(colors[i % colors.length]));
-        mesh.position.set(
-          (Math.random() - 0.5) * 20,
-          (Math.random() - 0.5) * 12,
-          (Math.random() - 0.5) * 5
-        );
-        mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
-        mesh.userData = {
-          drift: new THREE.Vector3((Math.random() - 0.5) * 0.015, (Math.random() - 0.5) * 0.015, (Math.random() - 0.5) * 0.015),
-          spin: new THREE.Vector3((Math.random() - 0.5) * 0.01, (Math.random() - 0.5) * 0.01, (Math.random() - 0.5) * 0.01),
-          floatOffset: Math.random() * Math.PI * 2,
+      // Reading-progress bar across the top of the page.
+      const bar = document.getElementById('docs-progress');
+      if (bar) {
+        let ticking = false;
+        const update = () => {
+          const max = document.documentElement.scrollHeight - window.innerHeight;
+          const ratio = max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0;
+          bar.style.transform = `scaleX(${ratio})`;
+          ticking = false;
         };
-        group.add(mesh);
-        dice.push(mesh);
+        window.addEventListener(
+          'scroll',
+          () => {
+            if (!ticking) {
+              ticking = true;
+              requestAnimationFrame(update);
+            }
+          },
+          { passive: true }
+        );
+        window.addEventListener('resize', update);
+        update();
       }
-
-      const edgesGeo = new THREE.EdgesGeometry(diceGeo);
-      const edgesMat = new THREE.LineBasicMaterial({ color: 0x171717, linewidth: 2 });
-
-      function raf() {
-        if (!reduced) {
-          const t = performance.now() * 0.001;
-          dice.forEach((m) => {
-            m.position.x += m.userData.drift.x;
-            m.position.y += m.userData.drift.y;
-            m.position.z += Math.sin(t + m.userData.floatOffset) * 0.008;
-            m.rotation.x += m.userData.spin.x;
-            m.rotation.y += m.userData.spin.y;
-            m.rotation.z += m.userData.spin.z;
-            if (m.position.x > 11) m.position.x = -11;
-            if (m.position.x < -11) m.position.x = 11;
-            if (m.position.y > 7) m.position.y = -7;
-            if (m.position.y < -7) m.position.y = 7;
-          });
-        }
-        renderer.render(scene, camera);
-        requestAnimationFrame(raf);
-      }
-      raf();
-
-      const onResize = () => {
-        camera.aspect = canvas.clientWidth / canvas.clientHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(canvas.clientWidth, canvas.clientHeight);
-      };
-      window.addEventListener('resize', onResize);
     </script>
+
+    <script>
+      // Highlight the table-of-contents entry for the section being read.
+      const links = Array.from(document.querySelectorAll<HTMLAnchorElement>('.docs__toc a[data-toc]'));
+      const byId = new Map(links.map((a) => [a.dataset.toc as string, a]));
+      const sections = links
+        .map((a) => document.getElementById(a.dataset.toc as string))
+        .filter((el): el is HTMLElement => !!el);
+
+      if ('IntersectionObserver' in window && sections.length) {
+        const setActive = (id: string) => {
+          links.forEach((a) => a.removeAttribute('aria-current'));
+          byId.get(id)?.setAttribute('aria-current', 'true');
+        };
+        const io = new IntersectionObserver(
+          (entries) => {
+            const visible = entries
+              .filter((e) => e.isIntersecting)
+              .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+            if (visible.length) setActive(visible[visible.length - 1].target.id);
+          },
+          { rootMargin: '-20% 0px -65% 0px' }
+        );
+        sections.forEach((s) => io.observe(s));
+        setActive(sections[0].id);
+      }
+    </script>
+
     <style>
-      .docs-field {
+      .jumpscare-link {
         position: fixed;
-        inset: 0;
-        z-index: -1;
-        pointer-events: none;
-        width: 100vw;
-        height: 100vh;
-        display: block;
+        left: 0;
+        top: 0;
+        width: 1px;
+        height: 1px;
+        opacity: 0;
+        pointer-events: auto;
+        overflow: hidden;
       }
     </style>
+
+    <style>
+      #jumpscare-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 999999;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: #171717;
+        color: #fff500;
+        font-family: "Jersey 25", cursive;
+        font-size: clamp(2rem, 10vw, 6rem);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+      }
+      #jumpscare-overlay.visible {
+        display: flex;
+      }
+      #jumpscare-content {
+        text-align: center;
+        animation: shake 0.1s infinite;
+      }
+      @keyframes shake {
+        0% { transform: translate(1px, 1px) rotate(0deg); }
+        10% { transform: translate(-1px, -2px) rotate(-1deg); }
+        20% { transform: translate(-3px, 0px) rotate(1deg); }
+        30% { transform: translate(3px, 2px) rotate(0deg); }
+        40% { transform: translate(1px, -1px) rotate(1deg); }
+        50% { transform: translate(-1px, 2px) rotate(-1deg); }
+        60% { transform: translate(-3px, 1px) rotate(0deg); }
+        70% { transform: translate(3px, 1px) rotate(-1deg); }
+        80% { transform: translate(-1px, -1px) rotate(1deg); }
+        90% { transform: translate(1px, 2px) rotate(0deg); }
+        100% { transform: translate(1px, -2px) rotate(-1deg); }
+      }
+      #jumpscare-bg {
+        position: fixed;
+        inset: 0;
+        z-index: 999998;
+        display: none;
+        background: #ff0000;
+        animation: flash 0.1s infinite;
+      }
+      #jumpscare-bg.visible {
+        display: block;
+      }
+      @keyframes flash {
+        0%, 100% { background: #ff0000; }
+        50% { background: #fff500; }
+      }
+    </style>
+
+    <div id="jumpscare-bg"></div>
+    <div id="jumpscare-overlay">
+      <div id="jumpscare-content">
+        RICK ROLLED<br />
+        <span style="font-size: 0.5em; font-family: 'Bricolage Grotesque', sans-serif; text-transform: none; letter-spacing: normal;">
+          you clicked the whitepaper
+        </span>
+      </div>
+    </div>
+
+    <script>
+      const link = document.getElementById('jumpscare-link');
+      const overlay = document.getElementById('jumpscare-overlay');
+      const bg = document.getElementById('jumpscare-bg');
+      const targetUrl = link.href;
+
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+
+        // Sudden audio blast
+        try {
+          const ctx = new (window.AudioContext || window.webkitAudioContext)();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(150, ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.5);
+          gain.gain.setValueAtTime(0.8, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1);
+          osc.start();
+          osc.stop(ctx.currentTime + 1);
+        } catch { /* audio blocked */ }
+
+        // Jumpscare appears instantly
+        bg.classList.add('visible');
+        overlay.classList.add('visible');
+
+        // Navigate to the rick roll after the jumpscare
+        setTimeout(() => {
+          window.open(targetUrl, '_blank');
+          overlay.classList.remove('visible');
+          bg.classList.remove('visible');
+        }, 3000);
+      });
+    </script>
   </body>
 </html>

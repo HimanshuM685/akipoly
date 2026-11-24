@@ -3,7 +3,9 @@ import type { GameView, LobbyView, RoundOutcome } from '../../../backend/src/sha
 import { useCountdown, useGameSocket } from '../../features/game/GameSocket';
 import BallReel from '../../features/game/BallReel';
 import PickPanel from '../../features/game/PickPanel';
-import { formatUsdc } from '../../lib/arc';
+import { addressUrl, formatUsdc, txUrl } from '../../lib/arc';
+
+const shortHash = (h: string) => `${h.slice(0, 8)}…${h.slice(-6)}`;
 
 interface Props {
   lobby: LobbyView;
@@ -65,6 +67,10 @@ export default function LiveGame({ lobby, game, onLeave }: Props) {
   })();
 
   const ballValue = round ? (round.phase === 'betting' ? round.prevBall : round.ball) : null;
+  // While the VRF is drawing, the reel keeps spinning (phaseEndsAt is only the
+  // void deadline then); it lands once the chain has answered and rolling starts.
+  const drawing = round?.phase === 'drawing';
+  const landAt = round && !drawing ? new Date(round.phaseEndsAt).getTime() : 0;
 
   return (
     <div className={`game ${flash ? `game--flash-${flash}` : ''}`}>
@@ -78,8 +84,9 @@ export default function LiveGame({ lobby, game, onLeave }: Props) {
       {round && (
         <BallReel
           value={ballValue}
-          rolling={round.phase === 'rolling'}
-          landAt={new Date(round.phaseEndsAt).getTime()}
+          rolling={round.phase === 'rolling' || drawing}
+          landAt={landAt}
+          rollingLabel={drawing ? 'drawing on-chain…' : 'rolling…'}
           rollingMs={rollingMs}
           clockOffset={clockOffset}
           label={ballLabel}
@@ -145,15 +152,44 @@ export default function LiveGame({ lobby, game, onLeave }: Props) {
       {round && (
         <details className="game__fair">
           <summary>provably fair</summary>
-          <p>
-            round {round.number} commitment: <code>{round.seedHash}</code>
-          </p>
-          {round.seed && (
-            <p>
-              seed: <code>{round.seed}</code>
-            </p>
+          {round.phase === 'betting' && (
+            <p>round {round.number}: nobody knows the ball yet, not even us. it is drawn on Arc once calls close.</p>
           )}
-          <p>ball = uint64(HMAC-SHA256(seed, &quot;gameId:round&quot;)[0..8]) mod 17 · gameId {game.id}</p>
+          {drawing && <p>round {round.number}: calls closed. the treasury requested the ball, waiting for the VRF proof…</p>}
+          {round.vrf && (
+            <>
+              <p>
+                round {round.number} request:{' '}
+                <a href={txUrl(round.vrf.requestTx)} target="_blank" rel="noreferrer">
+                  <code>{shortHash(round.vrf.requestTx)}</code>
+                </a>{' '}
+                (block {round.vrf.requestBlock})
+                {round.vrf.fulfillTx && (
+                  <>
+                    {' '}
+                    · proof verified on-chain:{' '}
+                    <a href={txUrl(round.vrf.fulfillTx)} target="_blank" rel="noreferrer">
+                      <code>{shortHash(round.vrf.fulfillTx)}</code>
+                    </a>
+                  </>
+                )}
+              </p>
+              <p>
+                random word: <code>{round.vrf.randomWord}</code>
+              </p>
+            </>
+          )}
+          <p>
+            ball = randomWord mod 17, computed by the{' '}
+            {session?.vrfContracts ? (
+              <a href={addressUrl(session.vrfContracts.rounds)} target="_blank" rel="noreferrer">
+                AkipolyRounds contract
+              </a>
+            ) : (
+              'AkipolyRounds contract'
+            )}{' '}
+            from VRF output proven over keccak256(preSeed, blockhash(requestBlock)) · gameId {game.id}
+          </p>
         </details>
       )}
 

@@ -1,15 +1,19 @@
 /**
- * Game state machine. Every round row moves betting → rolling → settled;
- * the scheduler advances rows whose phase_ends_at has passed.
+ * Game state machine. Every round row moves betting → drawing → rolling → settled.
+ * The scheduler advances betting and rolling rows whose phase_ends_at has passed.
+ * A drawing row moves on only when the on-chain VRF has answered (services/vrf.ts).
  *
- *   round 0 (opening): rolling → settled          (reveals the first ball)
- *   round n:           betting → rolling → settled (call higher/lower, roll, settle)
+ *   round 0 (opening): drawing → rolling → settled          (draws the first ball)
+ *   round n:           betting → drawing → rolling → settled (call, draw, roll, settle)
+ *
+ * The ball is requested only after betting closes, and nobody can know it
+ * before then, the server included. Chainlink's rule: accept no inputs once
+ * randomness has been requested.
  */
 import type pg from 'pg';
 import type { Hash } from 'viem';
 import { env } from '../config/env.js';
 import { withTx } from '../db/pool.js';
-import { deriveBall, newSeed } from '../domain/fairness.js';
 import {
   isGameOver,
   isPickPossible,
@@ -22,7 +26,9 @@ import {
 import { incomingTransferTotal } from '../chain/usdc.js';
 import { AppError, badRequest, conflict, notFound } from '../errors.js';
 import { lobbyChanged } from '../events.js';
+import { log } from '../log.js';
 import { enqueuePayouts, recordTransfer } from './payouts.js';
+import { enqueueVrfDraw } from './vrf.js';
 import type { Direction } from '../shared/protocol.js';
 
 const BETTING_MS = env.BETTING_SECONDS * 1000;
@@ -34,10 +40,9 @@ export interface RoundRow {
   lobby_id: string;
   pot: bigint;
   round_number: number;
-  phase: 'betting' | 'rolling' | 'settled';
+  phase: 'betting' | 'drawing' | 'rolling' | 'settled';
   prev_ball: number | null;
   ball: number | null;
-  seed: string;
   phase_ends_at: Date;
 }
 
@@ -75,21 +80,23 @@ export async function startGame(c: pg.PoolClient, lobbyId: string, buyIn: bigint
     lobbyId,
   ]);
 
-  const { seed, seedHash } = newSeed();
-  await c.query(
-    `insert into public.rounds (game_id, round_number, phase, ball, seed, seed_hash, phase_ends_at)
-     values ($1, 0, 'rolling', $2, $3, $4, now() + $5::interval)`,
-    [gameId, deriveBall(seed, gameId, 0), seed, seedHash, ms(env.ROLLING_MS)],
-  );
+  // The opening ball comes from the VRF like every other ball.
+  const roundId = (
+    await c.query<{ id: string }>(
+      `insert into public.rounds (game_id, round_number, phase, phase_ends_at)
+       values ($1, 0, 'drawing', now() + $2::interval) returning id`,
+      [gameId, ms(env.VRF_DRAW_TIMEOUT_MS)],
+    )
+  ).rows[0]!.id;
+  await enqueueVrfDraw(c, roundId, gameId, 0);
   return gameId;
 }
 
 async function openRound(c: pg.PoolClient, gameId: string, roundNumber: number, prevBall: number) {
-  const { seed, seedHash } = newSeed();
   await c.query(
-    `insert into public.rounds (game_id, round_number, phase, prev_ball, seed, seed_hash, phase_ends_at)
-     values ($1, $2, 'betting', $3, $4, $5, now() + $6::interval)`,
-    [gameId, roundNumber, prevBall, seed, seedHash, ms(BETTING_MS)],
+    `insert into public.rounds (game_id, round_number, phase, prev_ball, phase_ends_at)
+     values ($1, $2, 'betting', $3, now() + $4::interval)`,
+    [gameId, roundNumber, prevBall, ms(BETTING_MS)],
   );
 }
 
@@ -99,14 +106,76 @@ async function openRound(c: pg.PoolClient, gameId: string, roundNumber: number, 
  */
 export async function advanceRound(c: pg.PoolClient, round: RoundRow): Promise<{ finished: boolean }> {
   if (round.phase === 'betting') {
-    const ball = deriveBall(round.seed, round.game_id, round.round_number);
-    await c.query(
-      `update public.rounds set phase = 'rolling', ball = $2, phase_ends_at = now() + $3::interval where id = $1`,
-      [round.id, ball, ms(env.ROLLING_MS)],
-    );
+    // Calls are closed. Only now ask the chain for the ball; the VRF worker
+    // moves the round to 'rolling' once the proof has been verified on-chain.
+    // phase_ends_at is the deadline: if the VRF hasn't answered by then, the
+    // scheduler voids the round (voidUndrawnRound).
+    await c.query(`update public.rounds set phase = 'drawing', phase_ends_at = now() + $2::interval where id = $1`, [
+      round.id,
+      ms(env.VRF_DRAW_TIMEOUT_MS),
+    ]);
+    await enqueueVrfDraw(c, round.id, round.game_id, round.round_number);
     return { finished: false };
   }
+  if (round.phase === 'drawing') return { finished: await voidUndrawnRound(c, round) };
   return { finished: round.phase === 'rolling' && (await settleRound(c, round)) };
+}
+
+/**
+ * The VRF didn't deliver a ball before the deadline (oracle down, tx stuck or
+ * reverted, job held). Nobody gains from this: the round is void, side bets are
+ * refunded and nobody is out, as with any other void round. A missing opening
+ * ball ends the game and returns the pot without a house fee. The VRF job is
+ * left for operators (if it still lands on-chain, the result is simply unused).
+ * Returns true when this ended the game.
+ */
+async function voidUndrawnRound(c: pg.PoolClient, round: RoundRow): Promise<boolean> {
+  await c.query(
+    `update public.vrf_jobs
+        set status = case when status = 'pending' then 'held' else status end,
+            last_error = coalesce(last_error, 'round voided: no VRF answer before the deadline'),
+            updated_at = now()
+      where round_id = $1`,
+    [round.id],
+  );
+  await c.query(`update public.rounds set phase = 'settled', outcome = 'void' where id = $1`, [round.id]);
+  log.error({ gameId: round.game_id, round: round.round_number }, 'VRF did not answer in time, round voided');
+
+  const alive = (
+    await c.query<{ user_id: string }>(
+      `select user_id from public.game_players where game_id = $1 and eliminated_round is null`,
+      [round.game_id],
+    )
+  ).rows.map((r) => r.user_id);
+
+  if (round.round_number === 0) {
+    await finishGame(c, round, alive, alive, 0);
+    return true;
+  }
+
+  const picks: PickInput[] = (
+    await c.query<{ user_id: string; direction: Direction; side_bet: bigint }>(
+      `select user_id, direction, side_bet from public.picks where round_id = $1`,
+      [round.id],
+    )
+  ).rows.map((p) => ({ userId: p.user_id, direction: p.direction, sideBet: p.side_bet }));
+  await enqueuePayouts(
+    c,
+    settleSideBets(picks, 'void', env.HOUSE_FEE_BPS).map((p) => ({
+      key: `side:${round.id}:${p.userId}`,
+      userId: p.userId,
+      amount: p.amount,
+      reason: p.reason,
+      gameId: round.game_id,
+    })),
+  );
+
+  if (isGameOver(alive.length, round.round_number, env.MAX_ROUNDS)) {
+    await finishGame(c, round, alive, alive);
+    return true;
+  }
+  await openRound(c, round.game_id, round.round_number + 1, round.prev_ball!);
+  return false;
 }
 
 /** Returns true when this round ended the game. */
@@ -163,8 +232,14 @@ async function settleRound(c: pg.PoolClient, round: RoundRow): Promise<boolean> 
   return false;
 }
 
-async function finishGame(c: pg.PoolClient, round: RoundRow, survivors: string[], lastRoundPlayers: string[]) {
-  const { fee, payouts } = settlePot(round.pot, env.HOUSE_FEE_BPS, survivors, lastRoundPlayers);
+async function finishGame(
+  c: pg.PoolClient,
+  round: RoundRow,
+  survivors: string[],
+  lastRoundPlayers: string[],
+  feeBps = env.HOUSE_FEE_BPS,
+) {
+  const { fee, payouts } = settlePot(round.pot, feeBps, survivors, lastRoundPlayers);
   await enqueuePayouts(
     c,
     payouts.map((p) => ({
