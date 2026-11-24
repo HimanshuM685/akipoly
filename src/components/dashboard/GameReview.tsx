@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { GameReview as Review, LedgerEntry, ReviewRound } from '../../../backend/src/shared/protocol';
+import type { GameReview as Review, LedgerEntry, ReviewRound } from '@shared/protocol';
 import { useGameSocket } from '../../features/game/GameSocket';
 import { BALL_COLORS, DARK_BALLS } from '../../features/game/BallReel';
 import { addressUrl, formatUsdc, readRoundDraw, txUrl } from '../../lib/arc';

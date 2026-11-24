@@ -386,17 +386,17 @@ const toc = [
     </div>
 
     <script>
-      const link = document.getElementById('jumpscare-link');
+      const link = document.getElementById('jumpscare-link') as HTMLAnchorElement | null;
       const overlay = document.getElementById('jumpscare-overlay');
       const bg = document.getElementById('jumpscare-bg');
-      const targetUrl = link.href;
 
-      link.addEventListener('click', (e) => {
+      if (link && overlay && bg) link.addEventListener('click', (e) => {
+        const targetUrl = link.href;
         e.preventDefault();
 
         // Sudden audio blast
         try {
-          const ctx = new (window.AudioContext || window.webkitAudioContext)();
+          const ctx = new AudioContext();
           const osc = ctx.createOscillator();
           const gain = ctx.createGain();
           osc.connect(gain);

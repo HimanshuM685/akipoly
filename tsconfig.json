@@ -1,5 +1,10 @@
 {
   "extends": "astro/tsconfigs/strict",
+  "compilerOptions": {
+    // Code shared with the game server; it lives in backend/ so the server's
+    // Docker build (context: backend/) can still compile it.
+    "paths": { "@shared/*": ["./backend/src/shared/*"] }
+  },
   "include": [".astro/types.d.ts", "**/*"],
-  "exclude": ["dist", "backend"]
+  "exclude": ["dist", "backend", "contracts"]
 }

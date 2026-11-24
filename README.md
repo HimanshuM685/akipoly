@@ -163,16 +163,24 @@ src/components/Dashboard.tsx    the /play island (Privy, socket provider, screen
 src/components/dashboard/       lobby list, lobby room, live game, wallet, career
 src/features/game/             socket client, USDC payment hook, ball reel, pick panel
 src/lib/arc.ts                 Arc network config for the site (PUBLIC_ARC_NETWORK)
+src/lib/fairness.ts            in-browser round verification (VRF + legacy commit-reveal)
+src/lib/waitlist.ts            waitlist client seam
 src/components/WaitlistForm.astro  email form + success state + client script
 src/components/CookieBanner.astro  one-line cookie note (localStorage ack)
 src/components/Waterwave.astro     the rising-tide page transition between / and /docs
 src/styles/global.css          design tokens (from design.md) + all styles
-src/lib/waitlist.ts            waitlist client seam
 public/icons/                  generated icon set (see below)
+
+backend/                       game server (WebSocket + Postgres + Arc settlement), own package
+backend/src/shared/            protocol/constants/Arc/VRF code shared with the site;
+                               the site imports it as `@shared/*` (alias in tsconfig.json)
+contracts/                     Solidity (AkipolyRounds, VRF coordinator), own package
+docs/                          backend migration plan, design audit (historical)
+PRODUCT.md, DESIGN.md          product + design context (kept at root for the design tooling)
 ```
 
 All illustration is original (inline SVG sparkles; the logo artwork itself is
-the user-supplied master at `E:\editshit\The AKI Chapter.png`). Colours and spacing follow `design.md`; display
+the user-supplied master `The AKI Chapter.png`, kept outside this repo). Colours and spacing follow `design.md`; display
 type is **Chango** (the pinned Brick Sans is commercial and unavailable;
 Archivo Black was the earlier placeholder).
 

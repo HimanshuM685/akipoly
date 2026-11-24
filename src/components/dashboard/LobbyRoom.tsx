@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { LobbyView } from '../../../backend/src/shared/protocol';
+import type { LobbyView } from '@shared/protocol';
 import { useCountdown, useGameSocket } from '../../features/game/GameSocket';
 import { usePayUsdc } from '../../features/game/usePayUsdc';
 import { formatUsdc, network } from '../../lib/arc';

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { GameView, LobbyView, RoundOutcome } from '../../../backend/src/shared/protocol';
+import type { GameView, LobbyView, RoundOutcome } from '@shared/protocol';
 import { useCountdown, useGameSocket } from '../../features/game/GameSocket';
 import BallReel from '../../features/game/BallReel';
 import PickPanel from '../../features/game/PickPanel';

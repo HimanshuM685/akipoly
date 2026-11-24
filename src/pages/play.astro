@@ -75,7 +75,7 @@ const year = new Date().getFullYear();
     <script>
       import * as THREE from 'three';
 
-      const canvas = document.querySelector('.game-field');
+      const canvas = document.querySelector<HTMLCanvasElement>('.game-field');
       if (!canvas) throw new Error('GameField: canvas not found');
 
       const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -100,9 +100,9 @@ const year = new Date().getFullYear();
 
       const colors = [0xfff500, 0x9db7fb, 0xff6b4a, 0xb8f28b, 0xff80b5, 0xa78bfa];
       const diceGeo = new THREE.BoxGeometry(0.9, 0.9, 0.9);
-      const diceMat = (color) => new THREE.MeshStandardMaterial({ color, flatShading: true });
+      const diceMat = (color: number) => new THREE.MeshStandardMaterial({ color, flatShading: true });
 
-      const dice = [];
+      const dice: THREE.Mesh[] = [];
       const count = reduced ? 4 : 12;
 
       for (let i = 0; i < count; i++) {
@@ -121,9 +121,6 @@ const year = new Date().getFullYear();
         group.add(mesh);
         dice.push(mesh);
       }
-
-      const edgesGeo = new THREE.EdgesGeometry(diceGeo);
-      const edgesMat = new THREE.LineBasicMaterial({ color: 0x171717, linewidth: 2 });
 
       function raf() {
         if (!reduced) {

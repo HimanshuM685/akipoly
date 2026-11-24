@@ -12,7 +12,7 @@ import type {
   LobbySummary,
   LobbyView,
   ServerMessage,
-} from '../../../backend/src/shared/protocol';
+} from '@shared/protocol';
 import { formatUsdc, txUrl } from '../../lib/arc';
 
 const WS_URL = (import.meta.env.PUBLIC_WS_URL as string | undefined) ?? 'wss://ws.akipoly.xyz';

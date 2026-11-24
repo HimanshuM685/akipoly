@@ -31,7 +31,7 @@ Visitors arrive from social posts, communities and word of mouth. Most decide in
 - Waitlist form: validated email field (required + format), visible inline error and a success state. No backend exists; submissions are not persisted to any server until an endpoint is wired in.
 - No real launch date, no token details, no social metrics, no testimonials: none exist, none may be invented.
 - Copy must be human and must not use Monopoly/Hasbro trademarks. (Only exception: the user-pinned X share caption in the waitlist form.)
-- `design.md` (user-attached, at `E:\editshit\design.md`) is binding for every visual decision: palette, typography roles, 3px ink borders, hard offset shadows, motion restraint, accessibility rules.
+- `design.md` (user-attached, kept outside this repo) is binding for every visual decision: palette, typography roles, 3px ink borders, hard offset shadows, motion restraint, accessibility rules.
 - Technical: semantic HTML, accessible form controls, responsive, respects `prefers-reduced-motion`, minimal dependencies.
 - The wordmark/favicon artwork is user-supplied and authoritative (`The AKI Chapter.png`).
 
@@ -48,8 +48,8 @@ Visitors arrive from social posts, communities and word of mouth. Most decide in
 
 ## Evidence on Hand
 
-- `E:\editshit\design.md` (visual system) — exists, user-attached.
-- `E:\editshit\The AKI Chapter.png` (official logo artwork) — exists, user-attached.
+- `design.md` (visual system) — user-attached, kept outside this repo.
+- `The AKI Chapter.png` (official logo artwork) — user-attached, kept outside this repo.
 - No product screenshots, gameplay art, community numbers, testimonials, or press exist. None may be fabricated.
 - No backend, no waitlist endpoint, no real socials or handles yet.
 

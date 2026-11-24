@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { BALL_MAX, BALL_MIN } from '../../../backend/src/shared/constants';
-import type { Direction, GameView } from '../../../backend/src/shared/protocol';
+import { BALL_MAX, BALL_MIN } from '@shared/constants';
+import type { Direction, GameView } from '@shared/protocol';
 import { useGameSocket } from './GameSocket';
 import { usePayUsdc } from './usePayUsdc';
 import { formatUsdc, parseUsdc } from '../../lib/arc';

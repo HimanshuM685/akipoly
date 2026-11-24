@@ -4,7 +4,7 @@
  * player sees the same roll at the same moment.
  */
 import { useEffect, useRef, useState } from 'react';
-import { BALL_MAX, BALL_MIN } from '../../../backend/src/shared/constants';
+import { BALL_MAX, BALL_MIN } from '@shared/constants';
 
 export const BALL_COLORS: Record<number, string> = {
   0: '#F4F1E6',
