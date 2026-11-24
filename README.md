@@ -123,8 +123,9 @@ query; keep `DB_POOL_MAX=10` for ~100 players and raise to 20 past ~300 or if
 `/health` shows `db.waiting > 0`. Run it yourself (throwaway DB only):
 `docker compose -p akipoly-loadtest -f docker-compose.loadtest.yml run --rm loadtest`, then
 `docker compose -p akipoly-loadtest -f docker-compose.loadtest.yml down -v`. If you
-ran it before it had its own project name, remove the old db once with
-`docker rm -fv backend-db-1`.
+ran it before it had its own project name, remove the old db once (run
+from `backend/`): `docker ps -aq -f label=com.docker.compose.project=$(basename "$PWD") -f label=com.docker.compose.service=db | xargs -r docker rm -fv`
+(matches the old project by compose labels; the old project was named after the directory it ran from).
 
 Limits: 5 sockets per player (oldest tab closed), `MAX_CONNECTIONS` total
 (default 2000), slow clients over 1 MB of unsent data are dropped. One instance
