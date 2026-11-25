@@ -2556,6 +2556,39 @@ svg {
   color: var(--color-ink);
 }
 
+/* Leaderboard (reuses the career list) */
+.lb__rank {
+  font-size: 1.15rem;
+}
+
+.lb__me {
+  background: var(--color-primary);
+  box-shadow: 3px 3px 0 var(--color-ink);
+}
+
+.lb__wallet {
+  color: inherit;
+  font-variant-numeric: tabular-nums;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.lb__you {
+  font-weight: 700;
+}
+
+.lb__divider {
+  text-align: center;
+  color: rgba(23, 23, 23, 0.45);
+  line-height: 1;
+}
+
+.lb__note {
+  font-size: 0.85rem;
+  color: rgba(23, 23, 23, 0.55);
+}
+
 .spin {
   animation: spin 900ms linear infinite;
 }
