@@ -8,6 +8,7 @@ import LobbyRoom from './dashboard/LobbyRoom';
 import LiveGame from './dashboard/LiveGame';
 import CareerPanel from './dashboard/CareerPanel';
 import GameReview from './dashboard/GameReview';
+import LeaderboardPanel from './dashboard/LeaderboardPanel';
 import Toasts from './dashboard/Toasts';
 
 const APP_ID = import.meta.env.PUBLIC_PRIVY_APP_ID as string | undefined;
@@ -16,7 +17,13 @@ type Screen =
   | { name: 'lobbies' }
   | { name: 'table'; lobbyId: string }
   | { name: 'career' }
-  | { name: 'review'; gameId: string };
+  | { name: 'review'; gameId: string }
+  | { name: 'leaderboard' };
+
+type Tab = 'play' | 'career' | 'leaderboard';
+
+const tabOf = (s: Screen): Tab =>
+  s.name === 'career' || s.name === 'review' ? 'career' : s.name === 'leaderboard' ? 'leaderboard' : 'play';
 
 /** A lobby before the game, the live game after. One subscription for both. */
 function Table({ lobbyId, onLeave }: { lobbyId: string; onLeave: () => void }) {
@@ -45,6 +52,7 @@ function Table({ lobbyId, onLeave }: { lobbyId: string; onLeave: () => void }) {
 function DashboardGate() {
   const { ready, authenticated, login } = usePrivy();
   const [screen, setScreen] = useState<Screen>({ name: 'lobbies' });
+  const tab = tabOf(screen);
 
   if (!ready) {
     return (
@@ -81,17 +89,24 @@ function DashboardGate() {
         <nav className="dash__nav" aria-label="Dashboard sections">
           <button
             type="button"
-            className={`dash__navbtn ${screen.name !== 'career' ? 'dash__navbtn--active' : ''}`}
+            className={`dash__navbtn ${tab === 'play' ? 'dash__navbtn--active' : ''}`}
             onClick={() => setScreen({ name: 'lobbies' })}
           >
             play
           </button>
           <button
             type="button"
-            className={`dash__navbtn ${screen.name === 'career' ? 'dash__navbtn--active' : ''}`}
+            className={`dash__navbtn ${tab === 'career' ? 'dash__navbtn--active' : ''}`}
             onClick={() => setScreen({ name: 'career' })}
           >
             career
+          </button>
+          <button
+            type="button"
+            className={`dash__navbtn ${tab === 'leaderboard' ? 'dash__navbtn--active' : ''}`}
+            onClick={() => setScreen({ name: 'leaderboard' })}
+          >
+            leaderboard
           </button>
         </nav>
         <WalletPanel />
@@ -115,6 +130,8 @@ function DashboardGate() {
       {screen.name === 'review' && (
         <GameReview gameId={screen.gameId} onBack={() => setScreen({ name: 'career' })} />
       )}
+
+      {screen.name === 'leaderboard' && <LeaderboardPanel />}
     </div>
     </GameSocketProvider>
   );

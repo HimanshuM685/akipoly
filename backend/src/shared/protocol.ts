@@ -44,6 +44,7 @@ export const clientMessageSchema = z.discriminatedUnion('type', [
   }),
   z.object({ type: z.literal('career.get'), reqId }),
   z.object({ type: z.literal('game.review'), reqId, gameId: uuid }),
+  z.object({ type: z.literal('leaderboard.get'), reqId }),
 ]);
 
 export type ClientMessage = z.infer<typeof clientMessageSchema>;
@@ -174,6 +175,26 @@ export interface CareerEntry {
   paidIn: string;
   /** Pot/split payouts plus side-bet winnings and refunds. */
   won: string;
+}
+
+/** One wallet on the leaderboard, ranked by its on-chain USDC balance. */
+export interface LeaderboardEntry {
+  /** 1-based; wallets with equal balances share a rank. */
+  rank: number;
+  walletAddress: string;
+  balance: string;
+  isMe: boolean;
+}
+
+export interface LeaderboardView {
+  /** Top wallets, highest balance first. */
+  entries: LeaderboardEntry[];
+  /** The viewer's own row when it falls outside `entries`. */
+  me: LeaderboardEntry | null;
+  /** Wallets ranked in total. */
+  total: number;
+  /** ISO time the balances were read from the chain. */
+  updatedAt: string;
 }
 
 // ---------------------------------------------------------------------------
