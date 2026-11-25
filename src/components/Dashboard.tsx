@@ -179,6 +179,12 @@ export default function Dashboard() {
         loginMethods: ['email', 'google'],
         defaultChain: chain,
         supportedChains: [chain],
+        // Coinbase Smart Wallet doesn't support Arc; only offer the regular
+        // Coinbase Wallet (EOA). Also silences Privy's "chains are not
+        // supported by Coinbase Smart Wallet" console notice.
+        externalWallets: {
+          coinbaseWallet: { config: { preference: { options: 'eoaOnly' } } },
+        },
       }}
     >
       <DashboardGate />

@@ -1,0 +1,15 @@
+{
+  "name": "Akipoly",
+  "short_name": "Akipoly",
+  "description": "The classic property-trading game, rebuilt on Arc. Roll. Trade. Own the Arc.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#FFFDF2",
+  "theme_color": "#FFF500",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
