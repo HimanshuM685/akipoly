@@ -135,6 +135,11 @@
 }
 
 .play .dash__topbar {
+  /* Its entrance animation (fill: both) leaves a translate applied, which makes
+     this bar a stacking context; lift it so the wallet dropdown paints above
+     the animated cards that follow it. */
+  position: relative;
+  z-index: 20;
   padding: var(--space-3) var(--space-4);
   background: var(--color-white);
   border: var(--border-width) solid var(--color-ink);
