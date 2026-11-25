@@ -13,7 +13,8 @@
     "test": "node --import tsx --test test/*.test.ts",
     "migrate": "node dist/db/migrate.js",
     "migrate:dev": "tsx src/db/migrate.ts",
-    "loadtest": "tsx scripts/loadtest.ts"
+    "loadtest": "tsx scripts/loadtest.ts",
+    "check:leaderboard": "tsx scripts/leaderboard-check.ts"
   },
   "dependencies": {
     "@noble/curves": "^1.9.7",
