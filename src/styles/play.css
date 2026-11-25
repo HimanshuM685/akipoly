@@ -1,0 +1,1006 @@
+/* ------------------------------------------------------------------ */
+/*  Play page — full redesign (2026-11-24)                             */
+/*  "Arcade cabinet": a wide app shell, one sunburst stage for the     */
+/*  ball, white cards for everything you act on. Loaded after          */
+/*  global.css on /play only; it overrides the older .dash/.game rules.*/
+/* ------------------------------------------------------------------ */
+
+.play {
+  --stage: min(1180px, 100%);
+  padding-top: var(--space-5);
+}
+
+.play__top,
+.play__hero,
+.play .dash__panel,
+.play .play__legal {
+  width: var(--stage);
+}
+
+.play__top {
+  margin-bottom: var(--space-6);
+}
+
+/* ---------- hero: compact, title left / rules right ---------- */
+
+.play__hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  align-items: end;
+  gap: var(--space-6) var(--space-10);
+  margin-bottom: var(--space-8);
+}
+
+.play__hero-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.play .play__title {
+  font-size: clamp(2.8rem, 7vw, 5rem);
+  margin-top: var(--space-4);
+}
+
+.play__sub {
+  margin-top: var(--space-4);
+  max-width: 46ch;
+}
+
+.play__rules {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.play__rule {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-white);
+  border: var(--border-width) solid var(--color-ink);
+  border-radius: var(--radius-card);
+  box-shadow: 4px 4px 0 var(--color-ink);
+  font-weight: 600;
+  font-size: 0.95rem;
+  line-height: 1.3;
+}
+
+.play__rule:nth-child(1) { transform: rotate(-0.8deg); }
+.play__rule:nth-child(2) { transform: rotate(0.6deg); margin-left: var(--space-4); }
+.play__rule:nth-child(3) { transform: rotate(-0.4deg); }
+
+.play__rule b {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border: 2px solid var(--color-ink);
+  border-radius: 50%;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 1.2rem;
+}
+
+.play__rule:nth-child(1) b { background: var(--color-primary); }
+.play__rule:nth-child(2) b { background: var(--color-reward); }
+.play__rule:nth-child(3) b { background: var(--color-success); }
+
+.play__net {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 40px;
+  padding: 0 14px;
+  background: var(--color-white);
+  border: var(--border-width) solid var(--color-ink);
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.play__net i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-success);
+  border: 2px solid var(--color-ink);
+}
+
+.play__top-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* ---------- the app area: no wrapper card any more ---------- */
+
+.play .dash__panel {
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.play .dash__shell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.play .dash__topbar {
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-white);
+  border: var(--border-width) solid var(--color-ink);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-card);
+}
+
+.play .dash__nav {
+  padding: 4px;
+  gap: 4px;
+  background: var(--color-paper);
+  border: 2px solid var(--color-ink);
+  border-radius: var(--radius-button);
+}
+
+.play .dash__navbtn {
+  min-height: 38px;
+  box-shadow: none;
+  border: 2px solid transparent;
+  background: transparent;
+}
+
+.play .dash__navbtn:hover {
+  transform: none;
+  box-shadow: none;
+  background: rgba(255, 245, 0, 0.5);
+}
+
+.play .dash__navbtn--active,
+.play .dash__navbtn--active:hover {
+  background: var(--color-primary);
+  border-color: var(--color-ink);
+}
+
+/* Single-surface screens get their own card now that the wrapper is gone. */
+.play .dash__stack,
+.play .room,
+.play .career,
+.play .review,
+.play .dash__loading {
+  width: 100%;
+  background: var(--color-white);
+  border: var(--border-width) solid var(--color-ink);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-float);
+  padding: clamp(1.25rem, 3.5vw, 2.25rem);
+}
+
+.play .dash__loading {
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 400;
+}
+
+/* ---------- sign-in ---------- */
+
+.play .signin {
+  align-items: center;
+  text-align: center;
+  background: repeating-conic-gradient(from 0deg at 50% 0%, #fff9a8 0 7.5deg, var(--color-white) 7.5deg 15deg);
+}
+
+.play .signin .dash__heading {
+  font-size: clamp(2.2rem, 5vw, 3.4rem);
+}
+
+.play .signin .dash__copy {
+  max-width: 52ch;
+}
+
+.play .signin__steps {
+  width: 100%;
+  text-align: left;
+}
+
+.play .signin .btn--lg {
+  min-width: 240px;
+}
+
+/* ---------- lobby browser ---------- */
+
+.play .hub__card {
+  box-shadow: var(--shadow-float);
+}
+
+.play .lobbies__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--space-4);
+  list-style: none;
+  padding: 0;
+}
+
+.play .lobbies__card {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-4);
+  height: 100%;
+  justify-content: space-between;
+}
+
+.play .lobbies__join {
+  width: 100%;
+}
+
+.play .lobbies__empty {
+  padding: var(--space-10) var(--space-6);
+  background: var(--color-white);
+  border: var(--border-width) dashed var(--color-ink);
+  border-radius: var(--radius-panel);
+  text-align: center;
+}
+
+/* ---------- waiting room: two columns ---------- */
+
+.play .room--split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-8);
+}
+
+.play .room__col {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.play .room__head,
+.play .room__stakes {
+  justify-content: flex-start;
+}
+
+.play .room__stakes span {
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-primary);
+  border: 2px solid var(--color-ink);
+  border-radius: var(--radius-button);
+  box-shadow: 3px 3px 0 var(--color-ink);
+}
+
+.play .room__seat {
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-paper);
+}
+
+.play .room__seat--ready {
+  background: #e9fad9;
+}
+
+.play .room__avatar {
+  width: 40px;
+  height: 40px;
+}
+
+.play .room__actions .btn {
+  flex: 1 1 auto;
+}
+
+/* ================================================================== */
+/*  THE ARENA — live game                                              */
+/* ================================================================== */
+
+.play .arena {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  align-items: start;
+  gap: var(--space-6);
+  width: 100%;
+}
+
+.arena__stage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: clamp(1rem, 2.5vw, 1.75rem);
+  background: var(--color-primary);
+  border: var(--border-width) solid var(--color-ink);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-float);
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* The sunburst lives on its own layer so it can slowly turn. */
+.arena__stage::before {
+  content: "";
+  position: absolute;
+  inset: -70%;
+  background: repeating-conic-gradient(from 0deg at 50% 50%, var(--color-primary) 0 6deg, #fff9a8 6deg 12deg);
+  animation: playSpin 90s linear infinite;
+  pointer-events: none;
+}
+
+.arena__stage > * {
+  position: relative;
+  z-index: 1;
+}
+
+.arena__bar {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-4);
+}
+
+.arena__title {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-white);
+  border: var(--border-width) solid var(--color-ink);
+  border-radius: var(--radius-card);
+  box-shadow: 4px 4px 0 var(--color-ink);
+  min-width: 0;
+}
+
+.arena__eyebrow {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(23, 23, 23, 0.55);
+}
+
+.arena__name {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 1.7rem;
+  line-height: 1;
+  overflow-wrap: anywhere;
+}
+
+.arena__stats {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.arena__stat {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 78px;
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-white);
+  border: var(--border-width) solid var(--color-ink);
+  border-radius: var(--radius-card);
+  box-shadow: 4px 4px 0 var(--color-ink);
+  text-align: center;
+}
+
+.arena__stat--pot {
+  background: var(--color-success);
+}
+
+.arena__stat dt {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(23, 23, 23, 0.6);
+}
+
+.arena__stat dd {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.7rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.arena__stat dd small {
+  font-family: var(--font-body);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ---- court: ball + number line ---- */
+
+.arena__court {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-3) var(--space-5);
+}
+
+.arena .ballreel {
+  gap: var(--space-4);
+}
+
+.arena .game__ball {
+  width: clamp(150px, 24vw, 230px);
+  height: clamp(150px, 24vw, 230px);
+  margin: var(--space-2) 0 0;
+  font-size: clamp(3rem, 7vw, 4.6rem);
+}
+
+.arena .ballreel__label {
+  max-width: 34ch;
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-white);
+  border: 2px solid var(--color-ink);
+  border-radius: var(--radius-badge);
+  box-shadow: 3px 3px 0 var(--color-ink);
+  color: var(--color-ink);
+  font-size: 0.95rem;
+  line-height: 1.3;
+}
+
+/* ---- the call: timer + picks ---- */
+
+.arena__call {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  background: var(--color-white);
+  border: var(--border-width) solid var(--color-ink);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+
+.arena__timer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.arena__timer-track {
+  flex: 1;
+  height: 18px;
+  background: var(--color-paper);
+  border: 2px solid var(--color-ink);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.arena__timer-fill {
+  height: 100%;
+  background: var(--color-success);
+  border-right: 2px solid var(--color-ink);
+  transition: width 1s linear;
+}
+
+.arena__timer--urgent .arena__timer-fill {
+  background: var(--color-action);
+}
+
+.arena__timer-text {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  font-weight: 600;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.arena__timer-text strong {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 2rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.arena__timer--urgent .arena__timer-text strong {
+  color: #a33a2a;
+  animation: clockPulse 800ms ease-in-out infinite alternate;
+}
+
+.arena .game__bet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.arena .game__vote {
+  max-width: none;
+  width: 100%;
+  gap: var(--space-4);
+}
+
+.arena .game__choice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 128px;
+  padding: var(--space-3);
+  color: var(--color-ink);
+}
+
+.arena .game__choice-arrow {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.arena .game__choice-label {
+  font-family: var(--font-display);
+  font-size: 2.4rem;
+  line-height: 1;
+}
+
+.arena .game__choice-hint {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.arena .game__choice--active {
+  outline: 4px solid var(--color-ink);
+  outline-offset: -9px;
+  transform: translate(3px, 3px);
+  box-shadow: var(--shadow-pressed);
+}
+
+.arena .game__side {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-paper);
+  border: 2px solid var(--color-ink);
+  border-radius: var(--radius-card);
+}
+
+.arena .game__side > span:first-child {
+  margin-right: auto;
+}
+
+.arena .game__side-pools {
+  text-align: center;
+  font-size: 0.8rem;
+}
+
+.arena .game__lock {
+  width: 100%;
+  min-height: 60px;
+  font-size: 1rem;
+}
+
+.arena .game__locked,
+.arena .game__hint {
+  padding: var(--space-4);
+  background: var(--color-paper);
+  border: 2px dashed var(--color-ink);
+  border-radius: var(--radius-card);
+}
+
+/* ---- game over ---- */
+
+.arena .game__over {
+  background: var(--color-white);
+}
+
+/* ---- rail ---- */
+
+.arena__rail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.arena__card {
+  padding: var(--space-4);
+  background: var(--color-white);
+  border: var(--border-width) solid var(--color-ink);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+
+.arena__card-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.arena__card-title span {
+  padding: 2px 10px;
+  background: var(--color-secondary);
+  border: 2px solid var(--color-ink);
+  border-radius: 999px;
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.arena .game__roster {
+  padding: 0;
+  max-height: 340px;
+  overflow-y: auto;
+}
+
+.arena .game__seat--me {
+  background: #fffbb8;
+}
+
+.arena .game__seat-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.arena .game__called {
+  margin-left: auto;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(23, 23, 23, 0.45);
+}
+
+.arena .game__called--yes {
+  padding: 1px 8px;
+  background: var(--color-success);
+  border: 2px solid var(--color-ink);
+  border-radius: 999px;
+  color: var(--color-ink);
+}
+
+.arena .game__history {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.arena .game__fair {
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+
+.arena .game__fair summary {
+  cursor: pointer;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ---------- responsive ---------- */
+
+@media (max-width: 980px) {
+  .play__hero {
+    grid-template-columns: 1fr;
+  }
+
+  .play__rules {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .play__rule:nth-child(n) {
+    margin-left: 0;
+    transform: none;
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .play .arena {
+    grid-template-columns: 1fr;
+  }
+
+  .play .room--split {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .play__rules {
+    grid-template-columns: 1fr;
+  }
+
+  .play__rule:nth-child(n) {
+    flex-direction: row;
+    text-align: left;
+  }
+
+  .play__net {
+    display: none;
+  }
+
+  .arena__bar {
+    flex-direction: column;
+  }
+
+  .arena__stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .arena__stat {
+    min-width: 0;
+    padding-inline: var(--space-2);
+  }
+
+  .arena__timer {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2);
+  }
+
+  .arena .game__choice {
+    min-height: 104px;
+  }
+
+  .arena .game__choice-label {
+    font-size: 1.9rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arena__timer-fill {
+    transition: none;
+  }
+}
+
+/* ================================================================== */
+/*  Motion (2026-11-25) — layered on top, look unchanged               */
+/* ================================================================== */
+
+.fx-bit {
+  position: fixed;
+  top: 0;
+  left: 0;
+  display: block;
+  width: max-content;
+  height: max-content;
+  line-height: 0;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+@keyframes playRise {
+  from { opacity: 0; translate: 0 26px; }
+  to { opacity: 1; translate: 0 0; }
+}
+
+@keyframes playSlide {
+  from { opacity: 0; translate: 40px 0; }
+  to { opacity: 1; translate: 0 0; }
+}
+
+@keyframes playSlideLeft {
+  from { opacity: 0; translate: -24px 0; }
+  to { opacity: 1; translate: 0 0; }
+}
+
+@keyframes playPop {
+  0% { opacity: 0; scale: 0.5; }
+  60% { opacity: 1; scale: 1.08; }
+  100% { opacity: 1; scale: 1; }
+}
+
+@keyframes playWipe {
+  from { clip-path: inset(-14px 100% -14px -14px); }
+  to { clip-path: inset(-14px -14px -14px -14px); }
+}
+
+@keyframes playSpin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes playDrift {
+  0%, 100% { translate: 0 0; }
+  33% { translate: 8px -14px; }
+  66% { translate: -8px -6px; }
+}
+
+@keyframes playBob {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -10px; }
+}
+
+@keyframes playArrowUp {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -5px; }
+}
+
+@keyframes playArrowDown {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 5px; }
+}
+
+@keyframes playStripes {
+  to { background-position: 28.284px 0; }
+}
+
+@keyframes playShake {
+  0%, 100% { translate: 0 0; }
+  25% { translate: -3px 0; }
+  75% { translate: 3px 0; }
+}
+
+@keyframes playShine {
+  0%, 62% { translate: -140% 0; }
+  100% { translate: 260% 0; }
+}
+
+@keyframes playWiggle {
+  25% { rotate: -14deg; }
+  75% { rotate: 14deg; }
+}
+
+@keyframes playBeat {
+  0% { scale: 1; }
+  40% { scale: 1.18; }
+  100% { scale: 1; }
+}
+
+/* ---------- page header + hero ---------- */
+
+.play__top { animation: playRise 0.6s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+.play .home__badge { animation: playRise 0.6s cubic-bezier(0.2, 0.9, 0.3, 1) 0.1s both; }
+.play .play__title { animation: playRise 0.7s cubic-bezier(0.2, 0.9, 0.3, 1) 0.18s both; }
+.play .docs__hl { animation: playWipe 0.7s cubic-bezier(0.7, 0, 0.2, 1) 0.7s both; }
+.play .play__sub { animation: playRise 0.7s cubic-bezier(0.2, 0.9, 0.3, 1) 0.35s both; }
+
+.play__rule {
+  animation: playSlide 0.7s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+  transition: translate 180ms ease, box-shadow 180ms ease;
+}
+.play__rule:nth-child(1) { animation-delay: 0.35s; }
+.play__rule:nth-child(2) { animation-delay: 0.5s; }
+.play__rule:nth-child(3) { animation-delay: 0.65s; }
+
+.play__rule:hover { translate: -4px -3px; box-shadow: 7px 7px 0 var(--color-ink); }
+.play__rule:hover b { animation: playWiggle 0.5s ease-in-out; }
+
+.play__rule b { animation: playPop 0.5s cubic-bezier(0.3, 1.4, 0.5, 1) both; }
+.play__rule:nth-child(1) b { animation-delay: 0.9s; }
+.play__rule:nth-child(2) b { animation-delay: 1.05s; }
+.play__rule:nth-child(3) b { animation-delay: 1.2s; }
+
+/* sparkles drift on top of the existing twinkle */
+.play .play__spark {
+  animation-name: twinkle, playDrift;
+  animation-timing-function: ease-in-out, ease-in-out;
+  animation-iteration-count: infinite, infinite;
+}
+.play .play__spark--a { animation-duration: 2.6s, 7s; animation-delay: 0s, 0s; }
+.play .play__spark--b { animation-duration: 3.4s, 8.5s; animation-delay: -1.9s, -3s; }
+.play .play__spark--c { animation-duration: 2.9s, 6.5s; animation-delay: -1.2s, -1.5s; }
+
+/* ---------- app shell ---------- */
+
+.play .dash__topbar { animation: playRise 0.7s cubic-bezier(0.2, 0.9, 0.3, 1) 0.45s both; }
+.play .hub__card { animation: playRise 0.7s cubic-bezier(0.2, 0.9, 0.3, 1) 0.6s both; }
+.play .hub__card:nth-child(2) { animation-delay: 0.75s; }
+.hub__card:hover .hub__icon { animation: playWiggle 0.5s ease-in-out; }
+
+.play .lobbies__card { animation: playRise 0.5s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+.play .lobbies__card:nth-child(2) { animation-delay: 0.07s; }
+.play .lobbies__card:nth-child(3) { animation-delay: 0.14s; }
+.play .lobbies__card:nth-child(4) { animation-delay: 0.21s; }
+.play .lobbies__card:nth-child(n + 5) { animation-delay: 0.28s; }
+.play .lobbies__tag--live { animation: homePulse 1.6s ease-in-out infinite; }
+
+.play .signin { animation: playRise 0.7s cubic-bezier(0.2, 0.9, 0.3, 1) 0.45s both; }
+.play .signin__step { animation: playBob 4s ease-in-out infinite; }
+.play .signin__step--b { animation-delay: -1.3s; }
+.play .signin__step--c { animation-delay: -2.6s; }
+
+.play .dash__loading { animation: playBob 1.6s ease-in-out infinite; }
+
+/* ---------- waiting room ---------- */
+
+.play .room { animation: playRise 0.6s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+.play .room__seat { animation: playSlideLeft 0.45s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+.play .room__seat:nth-child(2) { animation-delay: 0.08s; }
+.play .room__seat:nth-child(3) { animation-delay: 0.16s; }
+.play .room__seat:nth-child(n + 4) { animation-delay: 0.24s; }
+.play .room__ready--yes { animation: playBeat 0.5s cubic-bezier(0.3, 1.4, 0.5, 1); }
+.play .room__tag { animation: homePulse 1.6s ease-in-out infinite; }
+
+/* ---------- arena ---------- */
+
+.arena__stage { animation: playPop 0.6s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+.arena__rail > * { animation: playSlide 0.6s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+.arena__rail > :nth-child(2) { animation-delay: 0.12s; }
+.arena__rail > :nth-child(3) { animation-delay: 0.24s; }
+
+.arena__pop { animation: playBeat 0.45s cubic-bezier(0.3, 1.4, 0.5, 1); }
+
+/* the ball idles with a gentle bob; its own roll/land keyframes keep transform */
+.arena .ballreel { animation: playBob 3.2s ease-in-out infinite; }
+.arena .ballreel__label { animation: playRise 0.4s ease-out both; }
+
+.arena__call { animation: playRise 0.5s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+
+/* timer: moving stripes on the fill, shake when urgent */
+.arena__timer-fill {
+  background-image: linear-gradient(
+    135deg,
+    rgba(23, 23, 23, 0.12) 25%,
+    transparent 25% 50%,
+    rgba(23, 23, 23, 0.12) 50% 75%,
+    transparent 75%
+  );
+  background-size: 28.284px 28.284px;
+  animation: playStripes 1.2s linear infinite;
+}
+
+.arena__timer--urgent .arena__timer-track { animation: playShake 0.3s linear infinite; }
+
+/* higher / lower: arrows bounce, buttons press */
+.arena .game__choice--higher .game__choice-arrow { animation: playArrowUp 1.2s ease-in-out infinite; }
+.arena .game__choice--lower .game__choice-arrow { animation: playArrowDown 1.2s ease-in-out infinite; }
+.arena .game__choice:disabled .game__choice-arrow,
+.arena .game__choice--active .game__choice-arrow { animation: none; }
+
+.arena .game__choice { transition: transform 140ms ease, box-shadow 140ms ease, opacity 140ms ease; }
+.arena .game__choice:not(:disabled):active { transform: translate(3px, 3px); box-shadow: var(--shadow-pressed); }
+
+/* lock-in button shine */
+.arena .game__lock { position: relative; overflow: hidden; }
+.arena .game__lock:not(:disabled)::after {
+  content: "";
+  position: absolute;
+  top: -20%;
+  bottom: -20%;
+  left: 0;
+  width: 26%;
+  background: rgba(255, 255, 255, 0.55);
+  transform: skewX(-22deg);
+  pointer-events: none;
+  animation: playShine 3.6s ease-in-out 1s infinite;
+}
+
+/* roster + history */
+.arena .game__seat { animation: playSlide 0.45s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+.arena .game__seat:nth-child(2) { animation-delay: 0.06s; }
+.arena .game__seat:nth-child(3) { animation-delay: 0.12s; }
+.arena .game__seat:nth-child(4) { animation-delay: 0.18s; }
+.arena .game__seat:nth-child(n + 5) { animation-delay: 0.24s; }
+.arena .game__called--yes { animation: playPop 0.35s cubic-bezier(0.3, 1.4, 0.5, 1); }
+.arena .game__crown { display: inline-block; animation: playBob 1.4s ease-in-out infinite; }
+.arena .game__history-item:first-child { animation: playPop 0.5s cubic-bezier(0.3, 1.4, 0.5, 1); }
+.arena .game__over { animation: playPop 0.6s cubic-bezier(0.3, 1.4, 0.5, 1) both; }
+.arena .game__over-title { display: inline-block; animation: playBob 1.8s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .play *,
+  .play *::before,
+  .play *::after,
+  .arena *,
+  .arena *::before,
+  .arena *::after {
+    animation: none !important;
+  }
+}

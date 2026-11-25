@@ -65,7 +65,9 @@ export default function PickPanel({ game }: Props) {
         disabled={impossible || step !== 'idle'}
         title={impossible ? `nothing is ${d} than ${prev}` : undefined}
       >
-        {d}
+        <span className="game__choice-arrow" aria-hidden="true">{d === 'higher' ? '▲' : '▼'}</span>
+        <span className="game__choice-label">{d}</span>
+        <small className="game__choice-hint">{d === 'higher' ? `above ${prev}` : `below ${prev}`}</small>
       </button>
     );
   };

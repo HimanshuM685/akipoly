@@ -30,9 +30,9 @@ function Table({ lobbyId, onLeave }: { lobbyId: string; onLeave: () => void }) {
   if (lobbyGone) {
     return (
       <div className="room">
-        <p className="dash__copy">this table doesn&apos;t exist anymore.</p>
+        <p className="dash__copy">this room doesn&apos;t exist anymore.</p>
         <button type="button" className="btn dash__btn" onClick={onLeave}>
-          back to tables
+          back to rooms
         </button>
       </div>
     );
@@ -56,12 +56,29 @@ function DashboardGate() {
 
   if (!authenticated) {
     return (
-      <div className="dash__stack">
+      <div className="dash__stack signin">
         <h2 className="dash__heading">sign in to claim your seat.</h2>
         <p className="dash__copy">
           sign in to claim it. your wallet is created on {network.name.toLowerCase()} — no seed
           phrases, no ceremony.
         </p>
+        <ol className="signin__steps">
+          <li className="signin__step signin__step--a">
+            <span className="signin__num" aria-hidden="true">1</span>
+            <strong>sign in</strong>
+            <span>email or google. your wallet appears.</span>
+          </li>
+          <li className="signin__step signin__step--b">
+            <span className="signin__num" aria-hidden="true">2</span>
+            <strong>pick a room</strong>
+            <span>create one or join with a code.</span>
+          </li>
+          <li className="signin__step signin__step--c">
+            <span className="signin__num" aria-hidden="true">3</span>
+            <strong>call it</strong>
+            <span>higher or lower. last one standing wins.</span>
+          </li>
+        </ol>
         <button type="button" className="btn btn--lg dash__btn" onClick={login}>
           sign in
         </button>
