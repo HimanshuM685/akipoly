@@ -1,5 +1,6 @@
 {
   "name": "akipoly-game-backend",
+  "license": "MIT",
   "version": "1.0.0",
   "description": "Akipoly minigame WebSocket backend with Arc Testnet USDC settlement",
   "main": "dist/index.js",
