@@ -13,7 +13,7 @@ function extractRoomCode(raw: string): string {
   const text = raw.trim();
   if (!text) return '';
   try {
-    const url = new URL(text);
+    const url = new URL(text, window.location.origin);
     return url.searchParams.get('room') ?? url.pathname.split('/').filter(Boolean).pop() ?? '';
   } catch {
     return text;

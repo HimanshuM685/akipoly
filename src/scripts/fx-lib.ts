@@ -5,7 +5,7 @@ export const STAR = (fill: string, size: number) =>
 
 export const pick = <T,>(list: T[]) => list[Math.floor(Math.random() * list.length)];
 
-export function bit(x: number, y: number, size: number) {
+export function bit(size: number) {
   const el = document.createElement('span');
   el.className = 'fx-bit';
   el.innerHTML = STAR(pick(COLORS), size);
@@ -15,7 +15,7 @@ export function bit(x: number, y: number, size: number) {
 
 export function burst(x: number, y: number, count = 16) {
   for (let i = 0; i < count; i++) {
-    const el = bit(x, y, 12 + Math.random() * 16);
+    const el = bit(12 + Math.random() * 16);
     const angle = (Math.PI * 2 * i) / count + Math.random() * 0.4;
     const dist = 70 + Math.random() * 110;
     const dx = Math.cos(angle) * dist;
