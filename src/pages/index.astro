@@ -1,5 +1,6 @@
 ---
 import '../styles/global.css';
+import '../styles/home-fx.css';
 import WaitlistForm from '../components/WaitlistForm.astro';
 import CookieBanner from '../components/CookieBanner.astro';
 import Waterwave from '../components/Waterwave.astro';
@@ -68,11 +69,6 @@ const year = new Date().getFullYear();
 
       <section class="home__hero">
         <div class="home__copy">
-          <p class="home__badge">
-            <span class="home__dot" aria-hidden="true"></span>
-            Waitlist open · Built on Arc
-          </p>
-
           <p class="page__tag home__headline">
             Roll. Trade. <span class="page__hl">Own the Arc.</span>
           </p>
@@ -149,5 +145,8 @@ const year = new Date().getFullYear();
       }
     </style>
     <CookieBanner />
+    <script>
+      import '../scripts/home-fx';
+    </script>
   </body>
 </html>
