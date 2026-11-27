@@ -215,8 +215,14 @@ Keep `DB_POOL_MAX=10` for about 100 players and raise it to 20 past about 300, o
 
 ```sh
 cd backend
-docker compose -f docker-compose.loadtest.yml run --rm loadtest
-docker compose -f docker-compose.loadtest.yml down -v
+docker compose -p akipoly-loadtest -f docker-compose.loadtest.yml run --rm loadtest
+docker compose -p akipoly-loadtest -f docker-compose.loadtest.yml down -v
+```
+
+`-p akipoly-loadtest` keeps the test on its own Docker network, apart from the real server (`COMPOSE_PROJECT_NAME` would otherwise override the file's `name:`). If you ran the load test before it had its own project name, remove the old database once, from `backend/`:
+
+```sh
+docker ps -aq -f label=com.docker.compose.project=$(basename "$PWD") -f label=com.docker.compose.service=db | xargs -r docker rm -fv
 ```
 
 Connection limits: 5 sockets per player (the oldest is closed), `MAX_CONNECTIONS` in total, and clients with more than 1 MB of unsent data are dropped.
@@ -234,7 +240,8 @@ akipoly/
 │   ├── scripts/                motion and confetti effects
 │   └── styles/                 design tokens and page styles
 ├── backend/                    Game server
-│   ├── src/shared/             protocol (Zod) and Arc network table, shared with the site
+│   ├── src/shared/             protocol (Zod), Arc network table, VRF helpers; the site
+│   │                           imports it as `@shared/*` (alias in tsconfig.json)
 │   ├── src/config/             validated environment (fails fast)
 │   ├── src/db/                 pool, migration runner, read models
 │   ├── src/domain/             pure game rules (unit tested)

@@ -3,7 +3,7 @@
   "license": "MIT",
   "type": "module",
   "version": "0.1.0",
-  "description": "akipoly - the property-trading board game reimagined as an arcade GameFi. Single-page waitlist site with one serverless endpoint.",
+  "description": "akipoly - the property-trading board game reimagined as an arcade GameFi. Landing page, waitlist endpoint and the /play game client.",
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
@@ -26,6 +26,7 @@
     "@astrojs/check": "^0.9.12",
     "@types/node": "^22.20.5",
     "@types/pg": "^8.23.1",
+    "@types/three": "^0.187.0",
     "typescript": "^5.9.3"
   }
 }

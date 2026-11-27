@@ -4,8 +4,8 @@
  */
 import { createPublicClient, erc20Abi, formatUnits, getAddress, http, parseAbi, parseUnits, type Chain } from 'viem';
 import { arc as arcMainnet, arcTestnet } from 'viem/chains';
-import { ARC_NETWORKS, USDC_DECIMALS, isArcNetwork } from '../../backend/src/shared/arc';
-import { AKIPOLY_ROUNDS_ABI, gameIdToBytes16 } from '../../backend/src/shared/vrf';
+import { ARC_NETWORKS, USDC_DECIMALS, isArcNetwork } from '@shared/arc';
+import { AKIPOLY_ROUNDS_ABI, gameIdToBytes16 } from '@shared/vrf';
 
 const requested = import.meta.env.PUBLIC_ARC_NETWORK as string | undefined;
 export const network = ARC_NETWORKS[isArcNetwork(requested) ? requested : 'testnet'];

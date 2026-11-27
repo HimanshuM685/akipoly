@@ -1,6 +1,6 @@
 # Akipoly — DESIGN.md
 
-> How this project implements the pinned system at `E:\editshit\design.md` ("Arc Monopoly — Visual
+> How this project implements the pinned system `design.md` (kept outside this repo) ("Arc Monopoly — Visual
 > Design System", concept **Electric Playground**). This file documents the **built** system in
 > `src/styles/global.css` and `src/components/WaitlistForm.astro`. The pinned file is the upstream
 > source of truth for intent; differences are called out explicitly — do not treat this file as a
@@ -222,7 +222,7 @@ work. Astro `^7.4.12`, static output.
   return 2xx on success. `src/lib/waitlist.ts` is the single integration point.
 - **Placeholder legal line** — footer copyright entity not yet supplied; uses © year +
   not-affiliated notice. No social links exist on the one-screen page by design.
-- **Official artwork provenance** — master is `E:\editshit\The AKI Chapter.png`; all derived
+- **Official artwork provenance** — master is `The AKI Chapter.png` (kept outside this repo); all derived
   rasters/SVG in `public/icons/` were generated from it.
 - **npm audit** — high-severity advisories in build-time transitive deps (`picomatch` ReDoS); not
   shipped to browser; `--force` deliberately rejected (would downgrade Astro a major).

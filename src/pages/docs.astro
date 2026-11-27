@@ -387,17 +387,22 @@ const toc = [
     </div>
 
     <script>
-      const link = document.getElementById('jumpscare-link');
+      const link = document.getElementById('jumpscare-link') as HTMLAnchorElement | null;
       const overlay = document.getElementById('jumpscare-overlay');
       const bg = document.getElementById('jumpscare-bg');
-      const targetUrl = link.href;
 
-      link.addEventListener('click', (e) => {
+      if (link && overlay && bg) link.addEventListener('click', (e) => {
+        const targetUrl = link.href;
         e.preventDefault();
 
         // Sudden audio blast
         try {
-          const ctx = new (window.AudioContext || window.webkitAudioContext)();
+          // Older iOS/Safari only ship the prefixed constructor.
+          const AC =
+            window.AudioContext ??
+            (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+          if (!AC) throw new Error('no Web Audio');
+          const ctx = new AC();
           const osc = ctx.createOscillator();
           const gain = ctx.createGain();
           osc.connect(gain);

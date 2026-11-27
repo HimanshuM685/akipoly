@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { CareerEntry } from '../../../backend/src/shared/protocol';
+import type { CareerEntry } from '@shared/protocol';
 import { useGameSocket } from '../../features/game/GameSocket';
 import { formatUsdc } from '../../lib/arc';
 
