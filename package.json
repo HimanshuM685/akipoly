@@ -1,5 +1,6 @@
 {
   "name": "akipoly",
+  "license": "MIT",
   "type": "module",
   "version": "0.1.0",
   "description": "akipoly - the property-trading board game reimagined as an arcade GameFi. Landing page, waitlist endpoint and the /play game client.",

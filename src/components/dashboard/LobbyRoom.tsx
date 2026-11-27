@@ -56,6 +56,17 @@ export default function LobbyRoom({ lobby, onLeave }: Props) {
     }
   };
 
+  const copyText = async (text: string, what: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast(`${what} copied`);
+    } catch {
+      toast(`couldn't copy — select it manually`);
+    }
+  };
+
+  const inviteLink = typeof window === 'undefined' ? '' : `${window.location.origin}/play?room=${lobby.id}`;
+
   const leave = async () => {
     setStep('leaving');
     try {
@@ -70,16 +81,17 @@ export default function LobbyRoom({ lobby, onLeave }: Props) {
   if (lobby.status === 'cancelled') {
     return (
       <div className="room">
-        <p className="dash__copy">this table closed.</p>
+        <p className="dash__copy">this room closed.</p>
         <button type="button" className="btn dash__btn" onClick={onLeave}>
-          back to tables
+          back to rooms
         </button>
       </div>
     );
   }
 
   return (
-    <div className="room">
+    <div className="room room--split">
+      <div className="room__col room__col--main">
       <div className="room__head">
         <h2 className="dash__heading">{lobby.name}</h2>
         <span className="room__tag">{lobby.status === 'starting' ? `starting in ${startsIn}` : lobby.status}</span>
@@ -99,24 +111,6 @@ export default function LobbyRoom({ lobby, onLeave }: Props) {
         round — wrong call or no call and you&apos;re out. last one standing takes the pot.
       </p>
 
-      <ul className="room__seats">
-        {lobby.players.map((p) => (
-          <li key={p.userId} className={`room__seat ${p.ready ? 'room__seat--ready' : ''}`}>
-            <span className="room__avatar" aria-hidden="true">
-              {p.displayName.slice(0, 1).toUpperCase()}
-            </span>
-            <span className="room__seat-name">
-              {p.displayName}
-              {p.userId === session?.userId && ' (you)'}
-            </span>
-            {p.userId === lobby.ownerUserId && <span className="room__badge">host</span>}
-            <span className={`room__ready ${p.ready ? 'room__ready--yes' : ''}`}>{p.ready ? 'ready' : 'not ready'}</span>
-          </li>
-        ))}
-      </ul>
-
-      {lobby.players.length < 2 && <p className="game__hint">waiting for at least one more player…</p>}
-
       <div className="room__actions">
         {me && open && !me.ready && (
           <button type="button" className="btn btn--lg dash__btn" onClick={() => void readyUp()} disabled={busy}>
@@ -133,7 +127,7 @@ export default function LobbyRoom({ lobby, onLeave }: Props) {
           </button>
         )}
         <button type="button" className="btn room__leave" onClick={() => void leave()} disabled={step !== 'idle'}>
-          {step === 'leaving' ? 'leaving…' : 'leave table'}
+          {step === 'leaving' ? 'leaving…' : 'leave room'}
         </button>
       </div>
 
@@ -152,6 +146,47 @@ export default function LobbyRoom({ lobby, onLeave }: Props) {
           {error}
         </p>
       )}
+      </div>
+
+      <div className="room__col room__col--side">
+      {open && (
+        <div className="room__invite">
+          <span className="room__invite-label">room code</span>
+          <code className="room__invite-code">{lobby.id}</code>
+          <div className="room__invite-actions">
+            <button type="button" className="btn room__invite-btn" onClick={() => void copyText(lobby.id, 'room code')}>
+              copy code
+            </button>
+            <button
+              type="button"
+              className="btn room__invite-btn room__invite-btn--link"
+              onClick={() => void copyText(inviteLink, 'invite link')}
+            >
+              copy invite link
+            </button>
+          </div>
+        </div>
+      )}
+
+      <ul className="room__seats">
+        {lobby.players.map((p) => (
+          <li key={p.userId} className={`room__seat ${p.ready ? 'room__seat--ready' : ''}`}>
+            <span className="room__avatar" aria-hidden="true">
+              {p.displayName.slice(0, 1).toUpperCase()}
+            </span>
+            <span className="room__seat-name">
+              {p.displayName}
+              {p.userId === session?.userId && ' (you)'}
+            </span>
+            {p.userId === lobby.ownerUserId && <span className="room__badge">host</span>}
+            <span className={`room__ready ${p.ready ? 'room__ready--yes' : ''}`}>{p.ready ? 'ready' : 'not ready'}</span>
+          </li>
+        ))}
+      </ul>
+
+      {lobby.players.length < 2 && <p className="game__hint">waiting for at least one more player…</p>}
+
+      </div>
     </div>
   );
 }

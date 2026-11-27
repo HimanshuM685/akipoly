@@ -1,5 +1,6 @@
 ---
 import '../styles/global.css';
+import '../styles/docs-fx.css';
 import Waterwave from '../components/Waterwave.astro';
 
 const year = new Date().getFullYear();
@@ -77,10 +78,6 @@ const toc = [
 
       <section class="docs__hero">
         <div class="docs__hero-copy">
-          <p class="home__badge">
-            <span class="home__dot" aria-hidden="true"></span>
-            the explainer
-          </p>
           <h1 class="docs__title">what is <span class="docs__hl">akipoly?</span></h1>
           <p class="docs__tldr">
             <span class="docs__tldr-tag">tl;dr</span>
@@ -256,6 +253,10 @@ const toc = [
       </div>
     </div>
     <Waterwave />
+
+    <script>
+      import '../scripts/docs-fx';
+    </script>
 
     <script>
       // Reading-progress bar across the top of the page.

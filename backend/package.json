@@ -1,5 +1,6 @@
 {
   "name": "akipoly-game-backend",
+  "license": "MIT",
   "version": "1.0.0",
   "description": "Akipoly minigame WebSocket backend with Arc Testnet USDC settlement",
   "main": "dist/index.js",
@@ -12,7 +13,8 @@
     "test": "node --import tsx --test test/*.test.ts",
     "migrate": "node dist/db/migrate.js",
     "migrate:dev": "tsx src/db/migrate.ts",
-    "loadtest": "tsx scripts/loadtest.ts"
+    "loadtest": "tsx scripts/loadtest.ts",
+    "check:leaderboard": "tsx scripts/leaderboard-check.ts"
   },
   "dependencies": {
     "@noble/curves": "^1.9.7",

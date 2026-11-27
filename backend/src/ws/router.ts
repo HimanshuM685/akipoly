@@ -12,6 +12,7 @@ import { treasuryAddress } from '../chain/usdc.js';
 import { AppError, forbidden } from '../errors.js';
 import { createLobby, joinLobby, leaveLobby, readyUp, unready } from '../services/lobby.js';
 import { placePick } from '../services/game.js';
+import { leaderboardFor } from '../services/leaderboard.js';
 import { log } from '../log.js';
 import { clientMessageSchema, type ClientMessage } from '../shared/protocol.js';
 import { bindUser, unwatchLobby, watchList, watchLobby, type Session } from './hub.js';
@@ -75,6 +76,7 @@ const handlers: { [T in Exclude<ClientMessage['type'], 'auth'>]: Handler<T> } = 
     s.send({ type: 'career', reqId: m.reqId, games: await careerFor(pool, s.userId) });
     return undefined;
   },
+  'leaderboard.get': async (s) => leaderboardFor(await walletOf(s)),
 };
 
 async function authenticate(s: Session, msg: Extract<ClientMessage, { type: 'auth' }>) {

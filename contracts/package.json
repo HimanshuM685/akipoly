@@ -1,5 +1,6 @@
 {
   "name": "akipoly-contracts",
+  "license": "MIT",
   "private": true,
   "type": "module",
   "scripts": {

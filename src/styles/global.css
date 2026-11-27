@@ -2556,6 +2556,39 @@ svg {
   color: var(--color-ink);
 }
 
+/* Leaderboard (reuses the career list) */
+.lb__rank {
+  font-size: 1.15rem;
+}
+
+.lb__me {
+  background: var(--color-primary);
+  box-shadow: 3px 3px 0 var(--color-ink);
+}
+
+.lb__wallet {
+  color: inherit;
+  font-variant-numeric: tabular-nums;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.lb__you {
+  font-weight: 700;
+}
+
+.lb__divider {
+  text-align: center;
+  color: rgba(23, 23, 23, 0.45);
+  line-height: 1;
+}
+
+.lb__note {
+  font-size: 0.85rem;
+  color: rgba(23, 23, 23, 0.55);
+}
+
 .spin {
   animation: spin 900ms linear infinite;
 }
@@ -3284,6 +3317,407 @@ html.wave-pending .waterwave {
   .home__ring,
   .page.home .page__logo {
     animation: none;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Play page — hero, create / join hub, rooms, invite, sign-in        */
+/*  (2026-11-23: same Electric Playground language as home + docs.)    */
+/* ------------------------------------------------------------------ */
+
+.play {
+  min-height: calc(100dvh - 56px);
+}
+
+.play__spark {
+  position: absolute;
+  z-index: 0;
+}
+
+.play__spark--a {
+  top: 22%;
+  left: 4%;
+}
+
+.play__spark--b {
+  top: 10%;
+  right: 9%;
+}
+
+.play__spark--c {
+  bottom: 16%;
+  right: 5%;
+}
+
+.play__top {
+  width: min(1000px, 100%);
+}
+
+.play__hero {
+  position: relative;
+  z-index: 1;
+  width: min(1000px, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-bottom: clamp(1.5rem, 4vh, 2.5rem);
+}
+
+.play .play__title {
+  width: auto;
+  margin: var(--space-5) 0 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(3rem, 8.5vw, 5.8rem);
+  letter-spacing: 0;
+  line-height: 1;
+}
+
+.play__sub {
+  margin-top: var(--space-5);
+  max-width: 52ch;
+  font-size: clamp(1rem, 1.8vw, 1.18rem);
+  font-weight: 500;
+  line-height: 1.55;
+  color: rgba(23, 23, 23, 0.78);
+}
+
+.play .dash__panel {
+  position: relative;
+  z-index: 1;
+  width: min(1000px, 100%);
+  padding: clamp(1.25rem, 3.5vw, 2rem);
+}
+
+.play .page__legal.play__legal {
+  position: relative;
+  z-index: 1;
+  margin-top: var(--space-10);
+  padding-top: 0;
+  text-align: center;
+}
+
+.dash__heading {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(2rem, 5vw, 2.8rem);
+  letter-spacing: 0;
+  line-height: 1;
+}
+
+/* ---- Create / Join hub ---- */
+.hub {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-5);
+}
+
+.hub__card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--color-white);
+  border: var(--border-width) solid var(--color-ink);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-card);
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.hub__card:hover,
+.hub__card:focus-within {
+  transform: translate(-1px, -3px);
+  box-shadow: 8px 8px 0 var(--color-ink);
+}
+
+.hub__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  background-color: var(--color-primary);
+  background-image: repeating-linear-gradient(
+    135deg,
+    rgba(23, 23, 23, 0.09) 0 10px,
+    transparent 10px 20px
+  );
+  border-bottom: var(--border-width) solid var(--color-ink);
+}
+
+.hub__head--join {
+  background-color: var(--color-reward);
+}
+
+.hub__icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  background: var(--color-ink);
+  color: var(--color-paper);
+  border-radius: 50%;
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.hub__title {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 2.2rem;
+  line-height: 1;
+}
+
+.hub__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  flex: 1;
+}
+
+.hub__copy {
+  font-size: 0.95rem;
+  font-weight: 500;
+  line-height: 1.5;
+  color: rgba(23, 23, 23, 0.78);
+}
+
+.hub__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.hub__label {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.hub__field .lobbies__input {
+  width: 100%;
+  box-shadow: 3px 3px 0 var(--color-primary);
+}
+
+.hub__field .lobbies__input:focus-visible {
+  outline: 3px solid var(--color-ink);
+  outline-offset: 2px;
+}
+
+.hub__field .lobbies__input[aria-invalid="true"] {
+  background: #ffe9e2;
+}
+
+.hub__code {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 0.85rem;
+}
+
+.hub__hint {
+  text-align: left;
+  color: #a33a2a;
+  font-weight: 600;
+}
+
+.hub__btn {
+  margin-top: auto;
+  width: 100%;
+  text-transform: none;
+  letter-spacing: 0.04em;
+}
+
+.hub__btn--join {
+  background: var(--color-reward);
+}
+
+.hub__fine {
+  font-size: 0.8rem;
+  text-align: center;
+  color: rgba(23, 23, 23, 0.6);
+}
+
+/* ---- Open rooms list ---- */
+.lobbies__count-chip {
+  display: inline-grid;
+  place-items: center;
+  min-width: 36px;
+  height: 36px;
+  margin-left: var(--space-3);
+  padding: 0 8px;
+  background: var(--color-ink);
+  color: var(--color-primary);
+  border-radius: 999px;
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.lobbies__card {
+  border-left-width: 10px;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.lobbies__card:hover {
+  transform: translate(-1px, -2px);
+  box-shadow: 7px 7px 0 var(--color-ink);
+}
+
+.lobbies__card--waiting {
+  border-left-color: var(--color-success);
+}
+
+.lobbies__card--starting {
+  border-left-color: var(--color-primary);
+}
+
+.lobbies__card--live {
+  border-left-color: var(--color-reward);
+}
+
+.lobbies__tag--waiting {
+  background: var(--color-success);
+}
+
+.lobbies__tag--starting {
+  background: var(--color-primary);
+}
+
+.lobbies__tag--live {
+  background: var(--color-reward);
+}
+
+/* ---- Room invite box ---- */
+.room__invite {
+  width: 100%;
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--color-secondary);
+  border: var(--border-width) solid var(--color-ink);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+
+.room__invite-label {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.room__invite-code {
+  display: block;
+  padding: 8px 10px;
+  background: var(--color-white);
+  border: 2px solid var(--color-ink);
+  border-radius: var(--radius-badge);
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 0.85rem;
+  word-break: break-all;
+  user-select: all;
+}
+
+.room__invite-actions {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.room__invite-btn {
+  min-height: 40px;
+  padding: 0 14px;
+  font-size: 0.75rem;
+  background: var(--color-primary);
+}
+
+.room__invite-btn--link {
+  background: var(--color-paper);
+}
+
+/* ---- Signed-out screen ---- */
+.signin__steps {
+  list-style: none;
+  padding: 0;
+  margin: var(--space-3) 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-5);
+}
+
+.signin__step {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-5) var(--space-4) var(--space-4);
+  border: var(--border-width) solid var(--color-ink);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  font-size: 0.9rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.signin__step strong {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 1.7rem;
+  line-height: 1;
+}
+
+.signin__step--a {
+  background: var(--color-primary);
+  transform: rotate(-1.2deg);
+}
+
+.signin__step--b {
+  background: var(--color-reward);
+  transform: rotate(0.8deg);
+}
+
+.signin__step--c {
+  background: var(--color-success);
+  transform: rotate(-0.6deg);
+}
+
+.signin__num {
+  position: absolute;
+  top: -14px;
+  right: 12px;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  background: var(--color-ink);
+  color: var(--color-paper);
+  border-radius: 50%;
+  font-family: var(--font-display);
+  font-size: 1rem;
+}
+
+@media (max-width: 760px) {
+  .hub,
+  .signin__steps {
+    grid-template-columns: 1fr;
+  }
+
+  .play__spark--c {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hub__card,
+  .lobbies__card {
+    transition: none;
   }
 }
 
