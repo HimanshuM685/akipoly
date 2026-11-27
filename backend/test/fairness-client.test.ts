@@ -5,7 +5,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash, createHmac, randomBytes } from 'node:crypto';
 import { ballFromRandomWord } from '../src/domain/fairness.ts';
-import { expandRandomWords } from '../src/chain/vrfProof.ts';
+import { encodeAbiParameters, keccak256 } from 'viem';
+
+// Any uint256 works as an Arc VRF word; derive reproducible ones for the tests.
+const expandRandomWords = (seed: bigint, n: number) =>
+  Array.from({ length: n }, (_, i) =>
+    BigInt(keccak256(encodeAbiParameters([{ type: 'uint256' }, { type: 'uint256' }], [seed, BigInt(i)]))),
+  );
 import { verifyLegacyRound, verifyVrfRound, type OnChainDraw } from '../../src/lib/fairness.ts';
 
 const GAME = '0f8fad5b-d9cb-469f-a165-70867728950e';

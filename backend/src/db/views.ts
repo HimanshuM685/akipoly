@@ -3,7 +3,7 @@
  * private `me` part is attached per socket from the same data.
  */
 import { getAddress } from 'viem';
-import { env } from '../config/env.js';
+import { arc, env } from '../config/env.js';
 import type { Db } from './pool.js';
 import type { RoundVrf, VrfContracts } from '../shared/protocol.js';
 
@@ -28,7 +28,11 @@ function vrfOf(r: VrfColumns): RoundVrf | null {
 }
 
 export function vrfContracts(): VrfContracts {
-  return { rounds: getAddress(env.VRF_ROUNDS_ADDRESS), coordinator: getAddress(env.VRF_COORDINATOR_ADDRESS) };
+  return {
+    rounds: getAddress(env.VRF_ROUNDS_ADDRESS),
+    coordinator: getAddress(arc.vrf.coordinator),
+    vrfExplorer: arc.vrf.explorerUrl,
+  };
 }
 import type {
   CareerEntry,

@@ -4,6 +4,7 @@ import { useGameSocket } from '../../features/game/GameSocket';
 import { BALL_COLORS, DARK_BALLS } from '../../features/game/BallReel';
 import { addressUrl, formatUsdc, readRoundDraw, txUrl } from '../../lib/arc';
 import { verifyLegacyRound, verifyVrfRound } from '../../lib/fairness';
+import { vrfProofUrl } from '@shared/vrf';
 
 interface Props {
   gameId: string;
@@ -332,12 +333,23 @@ export default function GameReview({ gameId, onBack }: Props) {
                     className={`review__fair ${ok === false ? 'review__fair--bad' : ok === null ? 'review__fair--na' : ''}`}
                     title={
                       r.vrf
-                        ? 'ball read from the AkipolyRounds contract on Arc, where the VRF proof was verified'
+                        ? 'ball read from the AkipolyRounds contract on Arc; the Arc VRF proof was verified on-chain'
                         : 'ball recomputed in your browser from the revealed seed'
                     }
                   >
                     {ok === undefined ? 'checking…' : ok === null ? "can't check" : ok ? '✓ fair' : '✗ mismatch'}
                   </span>
+                  {r.vrf && review.vrfContracts.vrfExplorer && (
+                    <a
+                      className="review__proof"
+                      href={vrfProofUrl(review.vrfContracts.vrfExplorer, r.vrf.requestId)}
+                      target="_blank"
+                      rel="noreferrer"
+                      title="step-by-step VRF proof for this ball on Arc VRF"
+                    >
+                      proof ↗
+                    </a>
+                  )}
                 </div>
 
                 {r.number > 0 && (
@@ -397,7 +409,7 @@ export default function GameReview({ gameId, onBack }: Props) {
                       {r.vrf.fulfillTx && (
                         <>
                           {' '}
-                          · proof:{' '}
+                          · delivered:{' '}
                           <a href={txUrl(r.vrf.fulfillTx)} target="_blank" rel="noreferrer">
                             <code>{shortHash(r.vrf.fulfillTx)}</code>
                           </a>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { LeaderboardEntry, LeaderboardView } from '../../../backend/src/shared/protocol';
+import type { LeaderboardEntry, LeaderboardView } from '@shared/protocol';
 import { useGameSocket } from '../../features/game/GameSocket';
 import { addressUrl, formatUsdc } from '../../lib/arc';
 

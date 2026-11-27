@@ -101,7 +101,7 @@ export interface RoundVrf {
   /** AkipolyRounds.requestBall, sent by the treasury after betting closed. */
   requestTx: string;
   requestBlock: string;
-  /** AkipolyVRFCoordinator.fulfillRandomWords: the proof, verified on-chain. Null if fulfilled by someone else. */
+  /** The Arc VRF's callback tx that delivered the word (proof verified on-chain). Null if not found. */
   fulfillTx: string | null;
   /** uint256 word the coordinator delivered; ball = randomWord % 17. */
   randomWord: string;
@@ -109,8 +109,12 @@ export interface RoundVrf {
 
 /** Where the VRF lives, so clients can verify against the chain themselves. */
 export interface VrfContracts {
+  /** AkipolyRounds, which turns the VRF word into the ball. */
   rounds: string;
+  /** Hosted Arc VRF coordinator that verifies the proof on-chain. */
   coordinator: string;
+  /** Arc VRF explorer; a request's proof page is `${vrfExplorer}/requests/<requestId>`. */
+  vrfExplorer: string | null;
 }
 export type RoundOutcome = 'higher' | 'lower' | 'push' | 'void' | 'opening';
 
