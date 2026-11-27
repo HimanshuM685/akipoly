@@ -33,17 +33,19 @@ export const AKIPOLY_ROUNDS_ABI = [
   'function requester() view returns (address)',
   'function keyHash() view returns (bytes32)',
   'function subId() view returns (uint256)',
-  'function callbackGasLimit() view returns (uint32)',
   'function requestConfirmations() view returns (uint16)',
   'function COORDINATOR() view returns (address)',
   'event BallRequested(bytes16 indexed gameId, uint32 indexed round, uint256 requestId)',
   'event BallDrawn(bytes16 indexed gameId, uint32 indexed round, uint256 requestId, uint256 randomWord, uint8 ball)',
 ] as const;
 
-/** Human-readable ABI of the hosted Arc VRF coordinator (the part we read). */
+/** Human-readable ABI of the hosted Arc VRF coordinator (backend reads, deploy script adds the consumer). */
 export const ARC_VRF_COORDINATOR_ABI = [
   'function getSubscription(uint256 subId) view returns (uint96 balance, uint96 nativeBalance, uint64 reqCount, address owner, address[] consumers)',
   'function addConsumer(uint256 subId, address consumer)',
+  'function s_provingKeys(bytes32 keyHash) view returns (bool exists, uint64 maxGas)',
+  // success=false: the consumer callback reverted or ran out of gas, and the request is gone.
+  'event RandomWordsFulfilled(uint256 indexed requestId, uint256 outputSeed, uint256 indexed subId, uint96 payment, bool nativePayment, bool success, bool onlyPremium)',
 ] as const;
 
 /** Public proof page for a request on the Arc VRF explorer. */

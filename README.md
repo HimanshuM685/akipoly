@@ -144,7 +144,7 @@ npm test                  # rules and fairness unit tests
 cd contracts
 npm install
 npm test                  # compile and run the Ganache test suite
-DEPLOYER_PRIVATE_KEY=0x… TREASURY_ADDRESS=0x… VRF_SUBSCRIPTION_ID=… npm run deploy
+RPC_URL=https://rpc.testnet.arc.io DEPLOYER_PRIVATE_KEY=0x… TREASURY_ADDRESS=0x… VRF_SUBSCRIPTION_ID=… npm run deploy
 ```
 
 Before deploying, create a subscription on [Arc VRF → Subscriptions](https://arcvrf.007575.xyz/subscriptions) and fund it with USDC (1 USDC covers plenty of test draws). `npm run deploy` deploys `AkipolyRounds` against the Arc VRF coordinator, adds it as a consumer if the deployer owns the subscription (otherwise add it on the subscription page), and prints `VRF_SUBSCRIPTION_ID` and `VRF_ROUNDS_ADDRESS` for `backend/.env`.

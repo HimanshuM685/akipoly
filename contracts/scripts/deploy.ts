@@ -2,10 +2,9 @@
  * Deploy AkipolyRounds as a consumer of the hosted Arc VRF
  * (https://arcvrf.007575.xyz/docs), paid from your subscription.
  *
- *   DEPLOYER_PRIVATE_KEY=0x… TREASURY_ADDRESS=0x… VRF_SUBSCRIPTION_ID=… npm run deploy
+ *   RPC_URL=https://rpc.testnet.arc.io DEPLOYER_PRIVATE_KEY=0x… TREASURY_ADDRESS=0x… VRF_SUBSCRIPTION_ID=… npm run deploy
  *
  * Optional:
- *   RPC_URL                 default Arc Testnet (https://rpc.testnet.arc.io)
  *   VRF_COORDINATOR_ADDRESS / VRF_KEY_HASH   default: Arc VRF on Arc Testnet
  *   CALLBACK_GAS_LIMIT      default 150000 (fulfillRandomWords only stores and emits)
  *   REQUEST_CONFIRMATIONS   default 0 (Arc finalises on inclusion)
@@ -13,9 +12,10 @@
  * If the deployer owns the subscription, AkipolyRounds is added as a consumer
  * here; otherwise add it on the Subscriptions page. Prints the backend/.env lines.
  */
-import { createPublicClient, createWalletClient, defineChain, getAddress, http, type Hex } from 'viem';
+import { createPublicClient, createWalletClient, defineChain, getAddress, http, parseAbi, type Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { ARC_NETWORKS } from '../../backend/src/shared/arc.js';
+import { ARC_VRF_COORDINATOR_ABI } from '../../backend/src/shared/vrf.js';
 import { artifact } from '../test/helpers.js';
 
 function need(name: string): string {
@@ -24,8 +24,8 @@ function need(name: string): string {
   return v;
 }
 
-const testnet = ARC_NETWORKS.testnet;
-const rpcUrl = process.env.RPC_URL ?? testnet.rpcUrl;
+// Required, not defaulted: a forgotten RPC_URL must not quietly deploy to testnet.
+const rpcUrl = need('RPC_URL');
 const deployer = privateKeyToAccount(need('DEPLOYER_PRIVATE_KEY') as Hex);
 const treasury = getAddress(need('TREASURY_ADDRESS'));
 const subId = BigInt(need('VRF_SUBSCRIPTION_ID'));
@@ -47,31 +47,7 @@ const chain = defineChain({
 const pub = createPublicClient({ chain, transport: http(rpcUrl) });
 const wallet = createWalletClient({ chain, transport: http(rpcUrl), account: deployer });
 
-const subscriptionAbi = [
-  {
-    type: 'function',
-    name: 'getSubscription',
-    stateMutability: 'view',
-    inputs: [{ name: 'subId', type: 'uint256' }],
-    outputs: [
-      { name: 'balance', type: 'uint96' },
-      { name: 'nativeBalance', type: 'uint96' },
-      { name: 'reqCount', type: 'uint64' },
-      { name: 'owner', type: 'address' },
-      { name: 'consumers', type: 'address[]' },
-    ],
-  },
-  {
-    type: 'function',
-    name: 'addConsumer',
-    stateMutability: 'nonpayable',
-    inputs: [
-      { name: 'subId', type: 'uint256' },
-      { name: 'consumer', type: 'address' },
-    ],
-    outputs: [],
-  },
-] as const;
+const subscriptionAbi = parseAbi(ARC_VRF_COORDINATOR_ABI);
 
 console.log(`chain ${chainId}, deployer ${deployer.address}, treasury ${treasury}`);
 console.log(`Arc VRF coordinator ${coordinator}, key hash ${keyHash}, subscription ${subId}`);

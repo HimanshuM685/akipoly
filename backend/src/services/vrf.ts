@@ -4,7 +4,7 @@
  *
  *   pending ──sign+broadcast requestBall──▶ requested
  *   requested ──Arc VRF delivers (AkipolyRounds.drawOf fulfilled)──▶ done (round: drawing → rolling)
- *   any ──reverted / request tx stuck far too long──▶ held (needs a human)
+ *   any ──reverted / request tx stuck far too long / callback failed / round voided──▶ held (needs a human)
  *
  * Each pass moves every open job at most one step without blocking, so many
  * tables can be drawing at once. A round is never requested a second time:
@@ -17,13 +17,15 @@ import { keccak256, type Hash, type Hex } from 'viem';
 import { env } from '../config/env.js';
 import { afterCommit, pool, withTx } from '../db/pool.js';
 import { broadcast, publicClient } from '../chain/usdc.js';
-import { findFulfillTx, parseRequest, readDraw, signRequestBall } from '../chain/vrf.js';
+import { coordinatorAddress, findFailedCallbacks, findFulfillTx, parseRequest, readDraw, roundsAddress, signRequestBall } from '../chain/vrf.js';
 import { events, lobbyChanged } from '../events.js';
 import { log } from '../log.js';
 
 const ACTIVE_POLL_MS = 250;
 const REBROADCAST_AFTER_MS = 15_000;
 const HOLD_AFTER_MS = 10 * 60_000;
+/** How often to look for failed callbacks (one eth_getLogs for all waiting jobs). */
+const FAILURE_SCAN_MS = 10_000;
 
 type JobStatus = 'pending' | 'requested' | 'done' | 'held';
 
@@ -107,7 +109,9 @@ async function nudge(job: JobRow, raw: Hex): Promise<boolean> {
   return false;
 }
 
-async function step(job: JobRow): Promise<void> {
+type Draw = Awaited<ReturnType<typeof readDraw>>;
+
+async function step(job: JobRow, prefetched: Draw | null, failed: Set<bigint>): Promise<void> {
   if (job.status === 'pending') {
     const { raw, hash } = await signRequestBall(job.game_id, job.round_number);
     await pool.query(
@@ -141,8 +145,13 @@ async function step(job: JobRow): Promise<void> {
   }
 
   // Waiting on the Arc VRF: its answer lands in AkipolyRounds.drawOf.
-  const draw = await readDraw(job.game_id, job.round_number);
-  if (!draw.fulfilled) return;
+  const draw = prefetched ?? (await readDraw(job.game_id, job.round_number));
+  if (!draw.fulfilled) {
+    if (failed.has(BigInt(job.request_id))) {
+      return hold(job, 'Arc VRF callback failed (raise callbackGasLimit with AkipolyRounds.setRequestParams)');
+    }
+    return;
+  }
   if (draw.requestId !== BigInt(job.request_id)) {
     return hold(job, `drawOf requestId ${draw.requestId} differs from ours ${job.request_id}`);
   }
@@ -157,7 +166,7 @@ async function finish(job: JobRow, ball: number, randomWord: bigint, fulfillTx: 
       `update public.rounds
           set phase = 'rolling', ball = $2, phase_ends_at = now() + $3::interval,
               vrf_request_id = $4, vrf_request_tx = $5, vrf_request_block = $6,
-              vrf_fulfill_tx = $7, vrf_random_word = $8
+              vrf_fulfill_tx = $7, vrf_random_word = $8, vrf_rounds_address = $9, vrf_coordinator = $10
         where id = $1 and phase = 'drawing'`,
       [
         job.round_id,
@@ -168,6 +177,8 @@ async function finish(job: JobRow, ball: number, randomWord: bigint, fulfillTx: 
         job.request_block,
         fulfillTx,
         randomWord.toString(),
+        roundsAddress,
+        coordinatorAddress,
       ],
     );
     await c.query(`update public.vrf_jobs set status = 'done', updated_at = now() where round_id = $1`, [job.round_id]);
@@ -185,6 +196,19 @@ export interface VrfPass {
    * must not sign anything else (payouts included) until it is rebroadcast.
    */
   blocked: boolean;
+}
+
+let lastFailureScan = 0;
+
+/** Callbacks the coordinator reported as failed, among these unanswered jobs. Throttled. */
+async function failedCallbacks(jobs: JobRow[]): Promise<Set<bigint>> {
+  if (jobs.length === 0 || Date.now() - lastFailureScan < FAILURE_SCAN_MS) return new Set();
+  lastFailureScan = Date.now();
+  const from = jobs.reduce((m, j) => (j.request_block! < m ? j.request_block! : m), jobs[0]!.request_block!);
+  return findFailedCallbacks(
+    jobs.map((j) => BigInt(j.request_id!)),
+    from,
+  );
 }
 
 /** Advance every open VRF job by one step. */
@@ -205,9 +229,23 @@ export async function runVrfJobs(): Promise<VrfPass> {
     return { delay: at ? Math.max(0, at.getTime() - Date.now()) : null, blocked: false };
   }
 
+  // Read every waiting draw at once rather than one RPC per job in turn.
+  const waiting = rows.filter((j) => j.status === 'requested' && j.request_id);
+  const draws = new Map(
+    await Promise.all(
+      waiting.map(async (j) => [j.round_id, await readDraw(j.game_id, j.round_number).catch(() => null)] as const),
+    ),
+  );
+  const failed = await failedCallbacks(waiting.filter((j) => draws.get(j.round_id)?.fulfilled === false)).catch(
+    (err: unknown) => {
+      log.warn({ err }, 'failed-callback scan failed');
+      return new Set<bigint>();
+    },
+  );
+
   for (const job of rows) {
     try {
-      await step(job);
+      await step(job, draws.get(job.round_id) ?? null, failed);
     } catch (err) {
       if (err instanceof BroadcastFailed) {
         log.warn({ err, roundId: job.round_id }, 'VRF broadcast failed, will retry');

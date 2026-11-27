@@ -42,7 +42,7 @@ const ERROR_STRING_ABI = [{ type: 'error', name: 'Error', inputs: [{ type: 'stri
 export const KEY_HASH: Hex = '0xcf39e27191d1d13c8fec1a175eda831392ef974fe21a5a0a0680c3a22c6deb88';
 export const SUB_ID = 4242n;
 
-export async function setup(opts: { callbackGasLimit?: number } = {}) {
+export async function setup() {
   const provider = ganache.provider({
     logging: { quiet: true },
     wallet: { mnemonic: MNEMONIC, totalAccounts: 4 },
@@ -88,7 +88,7 @@ export async function setup(opts: { callbackGasLimit?: number } = {}) {
 
   // The hosted Arc VRF coordinator is replaced by a recording mock in tests.
   const coordinator = await deploy('MockArcVRFCoordinator');
-  const rounds = await deploy('AkipolyRounds', [coordinator, treasury, KEY_HASH, SUB_ID, 0, opts.callbackGasLimit ?? 150_000]);
+  const rounds = await deploy('AkipolyRounds', [coordinator, treasury, KEY_HASH, SUB_ID, 0, 150_000]);
 
   const coordAbi = artifact('MockArcVRFCoordinator').abi;
   const roundsAbi = artifact('AkipolyRounds').abi;

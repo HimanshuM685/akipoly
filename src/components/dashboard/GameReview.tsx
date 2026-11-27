@@ -69,7 +69,9 @@ export default function GameReview({ gameId, onBack }: Props) {
     Promise.all(
       review.rounds.map(async (r): Promise<readonly [number, boolean | null]> => {
         if (r.vrf) {
-          const v = await verifyVrfRound(readRoundDraw(review.vrfContracts.rounds), review.gameId, r.number, r.ball, r.vrf);
+          // Check against the contract that drew it, not today's (it may have been redeployed).
+          if (!r.vrf.rounds) return [r.number, null] as const;
+          const v = await verifyVrfRound(readRoundDraw(r.vrf.rounds), review.gameId, r.number, r.ball, r.vrf);
           return [r.number, v === 'unavailable' ? null : v === 'verified'] as const;
         }
         if (r.legacy) {
@@ -339,7 +341,9 @@ export default function GameReview({ gameId, onBack }: Props) {
                   >
                     {ok === undefined ? 'checking…' : ok === null ? "can't check" : ok ? '✓ fair' : '✗ mismatch'}
                   </span>
-                  {r.vrf && review.vrfContracts.vrfExplorer && (
+                  {r.vrf &&
+                    review.vrfContracts.vrfExplorer &&
+                    r.vrf.coordinator?.toLowerCase() === review.vrfContracts.coordinator.toLowerCase() && (
                     <a
                       className="review__proof"
                       href={vrfProofUrl(review.vrfContracts.vrfExplorer, r.vrf.requestId)}

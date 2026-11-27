@@ -95,7 +95,9 @@ export const arc = {
     coordinator: vrfCoordinator as `0x${string}`,
     keyHash: vrfKeyHash as `0x${string}`,
     subscriptionId: BigInt(env.VRF_SUBSCRIPTION_ID),
-    explorerUrl: vrfDefaults?.explorerUrl ?? null,
+    // The published explorer only knows the published coordinator's requests.
+    explorerUrl:
+      vrfDefaults && vrfCoordinator.toLowerCase() === vrfDefaults.coordinator.toLowerCase() ? vrfDefaults.explorerUrl : null,
   },
 };
 export type Env = typeof env;

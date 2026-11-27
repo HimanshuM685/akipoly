@@ -36,11 +36,4 @@ library ArcVRFClient {
 /// @notice The part of the Arc VRF coordinator Akipoly uses.
 interface IArcVRFCoordinator {
   function requestRandomWords(ArcVRFClient.RandomWordsRequest calldata req) external returns (uint256 requestId);
-
-  function getSubscription(uint256 subId)
-    external
-    view
-    returns (uint96 balance, uint96 nativeBalance, uint64 reqCount, address owner, address[] memory consumers);
-
-  function addConsumer(uint256 subId, address consumer) external;
 }

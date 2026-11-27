@@ -5,7 +5,7 @@
  */
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { decodeAbiParameters, keccak256, slice, toBytes } from 'viem';
+import { decodeAbiParameters, keccak256, parseEventLogs, slice, toBytes } from 'viem';
 import { KEY_HASH, SUB_ID, expectRevert, gameId, setup } from './helpers.js';
 
 describe('AkipolyRounds on Arc VRF', async () => {
@@ -76,6 +76,22 @@ describe('AkipolyRounds on Arc VRF', async () => {
     assert.equal((await drawOf(gameId(5), 1)).ball, 5);
     // An unknown request id: the callback returns quietly (a revert would still be charged).
     await t.send(t.accounts.fulfiller, coordinator, coordAbi, 'fulfillRaw', [rounds, 999_999n, 1n]);
+  });
+
+  it('a callback that runs out of gas leaves the draw empty and is reported as failed', async () => {
+    await t.send(t.accounts.owner, rounds, roundsAbi, 'setRequestParams', [KEY_HASH, SUB_ID, 0, 5_000]);
+    try {
+      const { requestId } = await t.requestBall(gameId(6), 1);
+      const receipt = await t.fulfill(requestId, 42n);
+      assert.equal((await drawOf(gameId(6), 1)).fulfilled, false);
+      const [ev] = parseEventLogs({ abi: coordAbi, logs: receipt.logs, eventName: 'RandomWordsFulfilled' }) as unknown as {
+        args: { requestId: bigint; success: boolean };
+      }[];
+      assert.equal(ev!.args.requestId, requestId);
+      assert.equal(ev!.args.success, false);
+    } finally {
+      await t.send(t.accounts.owner, rounds, roundsAbi, 'setRequestParams', [KEY_HASH, SUB_ID, 0, 150_000]);
+    }
   });
 
   it('only the owner can change the subscription or key', async () => {

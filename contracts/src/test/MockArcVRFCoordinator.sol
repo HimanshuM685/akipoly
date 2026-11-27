@@ -29,6 +29,16 @@ contract MockArcVRFCoordinator {
   mapping(uint256 => address[]) internal s_consumers;
 
   event RandomWordsRequested(uint256 indexed requestId, address indexed sender, uint256 subId);
+  /// @dev Same signature as the real coordinator's; success=false when the callback failed.
+  event RandomWordsFulfilled(
+    uint256 indexed requestId,
+    uint256 outputSeed,
+    uint256 indexed subId,
+    uint96 payment,
+    bool nativePayment,
+    bool success,
+    bool onlyPremium
+  );
 
   function requestRandomWords(ArcVRFClient.RandomWordsRequest calldata req) external returns (uint256 requestId) {
     requestId = nextRequestId++;
@@ -44,13 +54,19 @@ contract MockArcVRFCoordinator {
     emit RandomWordsRequested(requestId, msg.sender, req.subId);
   }
 
-  /// @notice Deliver a word the way the real coordinator does after verifying its proof.
+  /// @notice Deliver a word the way the real coordinator does after verifying its proof:
+  /// with exactly the request's callbackGasLimit, reporting (not reverting on) a failed callback.
   function fulfill(uint256 requestId, uint256 word) external {
-    address consumer = requests[requestId].sender;
-    require(consumer != address(0), "unknown request");
+    Recorded memory r = requests[requestId];
+    require(r.sender != address(0), "unknown request");
+    // Like the real coordinator: refuse rather than hand the callback less gas than promised.
+    require(gasleft() > (uint256(r.callbackGasLimit) * 64) / 63 + 10_000, "not enough gas for callback");
     uint256[] memory words = new uint256[](1);
     words[0] = word;
-    IRawFulfill(consumer).rawFulfillRandomWords(requestId, words);
+    (bool success, ) = r.sender.call{gas: r.callbackGasLimit}(
+      abi.encodeCall(IRawFulfill.rawFulfillRandomWords, (requestId, words))
+    );
+    emit RandomWordsFulfilled(requestId, word, r.subId, 0, true, success, false);
   }
 
   /// @notice Call a consumer's callback directly (e.g. for an id it never asked for).
@@ -58,6 +74,11 @@ contract MockArcVRFCoordinator {
     uint256[] memory words = new uint256[](1);
     words[0] = word;
     IRawFulfill(consumer).rawFulfillRandomWords(requestId, words);
+  }
+
+  /// @notice Every non-zero key hash counts as registered.
+  function s_provingKeys(bytes32 keyHash) external pure returns (bool exists, uint64 maxGas) {
+    return (keyHash != bytes32(0), 0);
   }
 
   function addConsumer(uint256 subId, address consumer) external {

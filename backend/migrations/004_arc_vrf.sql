@@ -1,7 +1,11 @@
 -- 004_arc_vrf: balls are now drawn by the hosted Arc VRF (subscription-paid).
 -- The server only requests and reads; it no longer proves or fulfils, so the
 -- oracle-side job columns and the 'fulfilling' state are gone.
-update public.vrf_jobs set status = 'requested' where status = 'fulfilling';
+-- Draws already sent went to the old coordinator and AkipolyRounds: they can
+-- never land on the new contract, so hold them (their rounds void at the deadline).
+update public.vrf_jobs
+   set status = 'held', last_error = 'requested before the switch to Arc VRF', updated_at = now()
+ where status = 'fulfilling' or (status = 'requested' and request_tx is not null);
 
 alter table public.vrf_jobs drop constraint if exists vrf_jobs_status_check;
 alter table public.vrf_jobs add constraint vrf_jobs_status_check

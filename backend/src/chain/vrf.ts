@@ -55,6 +55,15 @@ export async function readDraw(gameId: string, roundNumber: number) {
   });
 }
 
+/** Log scans stop this many blocks after the request; an answer later than that is not looked for. */
+const LOG_WINDOW = 5_000n;
+
+async function logRange(fromBlock: bigint) {
+  const head = await publicClient.getBlockNumber();
+  const toBlock = fromBlock + LOG_WINDOW < head ? fromBlock + LOG_WINDOW : head;
+  return { fromBlock, toBlock };
+}
+
 /** The tx in which the Arc VRF delivered this round's ball (for the review's links). */
 export async function findFulfillTx(gameId: string, roundNumber: number, fromBlock: bigint): Promise<Hash | null> {
   const logs = await publicClient.getContractEvents({
@@ -62,9 +71,25 @@ export async function findFulfillTx(gameId: string, roundNumber: number, fromBlo
     abi: roundsAbi,
     eventName: 'BallDrawn',
     args: { gameId: gameIdToBytes16(gameId), round: roundNumber },
-    fromBlock,
+    ...(await logRange(fromBlock)),
   });
   return logs[0]?.transactionHash ?? null;
+}
+
+/**
+ * Request ids (of `requestIds`) the coordinator answered but whose callback
+ * failed (reverted / out of gas): those draws will never land in drawOf.
+ */
+export async function findFailedCallbacks(requestIds: bigint[], fromBlock: bigint): Promise<Set<bigint>> {
+  if (requestIds.length === 0) return new Set();
+  const logs = await publicClient.getContractEvents({
+    address: coordinatorAddress,
+    abi: coordinatorAbi,
+    eventName: 'RandomWordsFulfilled',
+    args: { requestId: requestIds },
+    ...(await logRange(fromBlock)),
+  });
+  return new Set(logs.filter((l) => l.args.success === false).map((l) => l.args.requestId!));
 }
 
 /**
@@ -88,7 +113,7 @@ export async function checkVrfSetup(): Promise<{ mismatches: string[]; warnings:
       return null;
     });
   const subId = arc.vrf.subscriptionId;
-  const [requester, coordinator, keyHash, roundsSubId, subscription] = await Promise.all([
+  const [requester, coordinator, keyHash, roundsSubId, subscription, provingKey] = await Promise.all([
     read(publicClient.readContract({ address: roundsAddress, abi: roundsAbi, functionName: 'requester' })),
     read(publicClient.readContract({ address: roundsAddress, abi: roundsAbi, functionName: 'COORDINATOR' })),
     read(publicClient.readContract({ address: roundsAddress, abi: roundsAbi, functionName: 'keyHash' })),
@@ -101,6 +126,14 @@ export async function checkVrfSetup(): Promise<{ mismatches: string[]; warnings:
         args: [subId],
       }),
     ),
+    read(
+      publicClient.readContract({
+        address: coordinatorAddress,
+        abi: coordinatorAbi,
+        functionName: 's_provingKeys',
+        args: [arc.vrf.keyHash],
+      }),
+    ),
   ]);
   if (problems.length || unreachable) return { mismatches: problems, warnings, unreachable };
 
@@ -110,6 +143,7 @@ export async function checkVrfSetup(): Promise<{ mismatches: string[]; warnings:
     problems.push(`AkipolyRounds.COORDINATOR is ${coordinator}, expected the Arc VRF coordinator ${coordinatorAddress}`);
   if (keyHash!.toLowerCase() !== arc.vrf.keyHash.toLowerCase())
     problems.push(`AkipolyRounds.keyHash ${keyHash} does not match ${arc.vrf.keyHash}`);
+  if (!provingKey![0]) problems.push(`key hash ${arc.vrf.keyHash} is not registered on coordinator ${coordinatorAddress}`);
   if (roundsSubId !== subId)
     problems.push(`AkipolyRounds.subId is ${roundsSubId}, VRF_SUBSCRIPTION_ID is ${subId}`);
   const [, nativeBalance, , , consumers] = subscription!;
