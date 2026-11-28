@@ -32,7 +32,9 @@ const subId = BigInt(need('VRF_SUBSCRIPTION_ID'));
 const confirmations = Number(process.env.REQUEST_CONFIRMATIONS ?? 0);
 const callbackGasLimit = Number(process.env.CALLBACK_GAS_LIMIT ?? 150_000);
 
-const probe = createPublicClient({ transport: http(rpcUrl) });
+// Public Arc RPCs rate-limit (HTTP 429): back off and retry instead of failing.
+const transport = () => http(rpcUrl, { retryCount: 8, retryDelay: 1_500 });
+const probe = createPublicClient({ transport: transport() });
 const chainId = await probe.getChainId();
 const known = Object.values(ARC_NETWORKS).find((n) => n.chainId === chainId)?.vrf ?? null;
 const coordinator = getAddress(process.env.VRF_COORDINATOR_ADDRESS ?? known?.coordinator ?? need('VRF_COORDINATOR_ADDRESS'));
@@ -44,8 +46,8 @@ const chain = defineChain({
   nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
   rpcUrls: { default: { http: [rpcUrl] } },
 });
-const pub = createPublicClient({ chain, transport: http(rpcUrl) });
-const wallet = createWalletClient({ chain, transport: http(rpcUrl), account: deployer });
+const pub = createPublicClient({ chain, transport: transport() });
+const wallet = createWalletClient({ chain, transport: transport(), account: deployer });
 
 const subscriptionAbi = parseAbi(ARC_VRF_COORDINATOR_ABI);
 
